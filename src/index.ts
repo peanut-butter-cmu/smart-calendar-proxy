@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
+// import { CalendarEvent } from './models/event.js';
+// import { CalendarEventType } from './models/event.js';
 
 const reg_app = express();
 const oauth_app = express();
@@ -62,3 +64,9 @@ oauth_app.listen(PORT_OAUTH, () => {
 mango_app.listen(PORT_MANGO, () => {
   console.log(`Mango Proxy server is running on http://localhost:${PORT_MANGO}`);
 })
+
+// let p: CalendarEvent = {
+//   type: CalendarEventType.Assignment,
+//   date: new Date(),
+//   title: 'Hello'
+// }

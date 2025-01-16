@@ -1,27 +1,40 @@
 {
   "name": "smart-calendar-proxy",
   "version": "1.0.0",
-  "main": "index.js",
+  "exports": "./index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "test": "jest",
+    "build": "tsc --build tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts"
   },
+  "type": "module",
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "cheerio": "^1.0.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dayjs": "^1.11.13",
     "express": "^4.21.2",
-    "http-proxy-middleware": "^3.0.3"
+    "http-proxy-middleware": "^3.0.3",
+    "ky": "^1.7.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@tsconfig/node22": "^22.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/http-proxy-middleware": "^0.19.3",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
+    "babel-jest": "^29.7.0",
+    "dotenv": "^16.4.7",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.9",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }
