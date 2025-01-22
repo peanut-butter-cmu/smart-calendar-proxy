@@ -1,25 +1,33 @@
 {
   "name": "smart-calendar-proxy",
   "version": "1.0.0",
-  "exports": "./index.js",
+  "exports": "./app.js",
   "scripts": {
     "test": "jest",
     "build": "tsc --build tsconfig.build.json",
-    "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts"
+    "start": "node -r tsconfig-paths/register dist/app.js",
+    "dev": "nodemon --exec \"node --no-warnings=ExperimentalWarning --loader ts-node/esm\" src/app.ts"
   },
   "type": "module",
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.7.8",
+    "axios-cookiejar-support": "^5.0.5",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "express": "^4.21.2",
+    "express-jwt": "^8.5.1",
+    "express-validator": "^7.2.1",
     "http-proxy-middleware": "^3.0.3",
-    "ky": "^1.7.4"
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "tough-cookie": "^5.1.0",
+    "typeorm": "^0.3.20"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

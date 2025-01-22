@@ -2,20 +2,20 @@
 module.exports = {
     testEnvironment: "node",
     transform: {
-      "^.+.tsx?$": [
-        "ts-jest",
-        { useESM: true }
-      ]
+        "^.+.tsx?$": [
+            "ts-jest",
+            { useESM: true, isolatedModules: true }
+        ]
     },
     setupFiles: [
-      "<rootDir>/tests/setup.ts"
+        "<rootDir>/tests/setup.ts"
     ],
     extensionsToTreatAsEsm: [".ts"],
     modulePaths: [
-      "<rootDir>"
+        "<rootDir>"
     ],
     moduleNameMapper: {
-      "^@/(.*)$": "<rootDir>/src/$1",
-      "^(\\.{1,2}/.*)\\.js$": "$1"
+        "^@/(.*).js$": "<rootDir>/src/$1",
+        "^(\\.{1,2}/.*)\\.js$": "$1"
     }
 };

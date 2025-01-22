@@ -1,7 +1,7 @@
-import { CalendarEvent } from "@/models/event.js";
-import { Fetcher } from "./base.js";
+import { CalendarEvent } from "../models/calendarEvent.entity.js";
+import { IFetcher } from "./base.js";
 
-class WixFetcher implements Fetcher {
+export class WixFetcher implements IFetcher {
     getEvents(): Promise<CalendarEvent[]> {
         throw new Error("Method not implemented.");
     }

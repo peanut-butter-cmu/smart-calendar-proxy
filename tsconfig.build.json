@@ -1,7 +1,8 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-      "noUnusedLocals": true
+      "noUnusedLocals": true,
+      "removeComments": true
     },
     "include": ["src"]
   }

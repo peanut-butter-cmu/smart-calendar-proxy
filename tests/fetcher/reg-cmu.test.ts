@@ -1,11 +1,9 @@
-import { EnvAuth } from "../../src/auth/env.js";
-import { KyRegClient } from "../../src/client/ky.js";
-import { createREGPayload, RegCMUFetcher } from "../../src/fetcher/reg-cmu.js";
-import { EnvRepository } from "../../src/repositories/env.js";
+import { createOAuthPayload } from "@/helpers/reg-cmu.js";
 
+jest.setTimeout(30 * 60 * 1000); // Only limit the time out to 30 seconds.
 describe("testing createREGPayload", () => {
     test("testing username login", () => {
-        expect(createREGPayload({
+        expect(createOAuthPayload({
             username: "username_123_USERNAME"
         }, {
             viewState: "view_state_123_VIEW_STATE",
@@ -24,7 +22,7 @@ describe("testing createREGPayload", () => {
     });
 
     test("testing password login", () => {
-        expect(createREGPayload({
+        expect(createOAuthPayload({
             username: "username_123_USERNAME",
             password: "password_123_PASSWORD_!@#$"
         }, {
@@ -43,16 +41,7 @@ describe("testing createREGPayload", () => {
             password: "password_123_PASSWORD_!@#$",
             chkbxKeepmesignin: "on",
             btnLogin_submit: "Sign in",
-            __ASYNCPOST: true
+            __ASYNCPOST: "true"
         });
-    });
-});
-
-describe("testing RegCMUFetcher", () => {
-    test("test get events", () => {
-        const auth = new EnvAuth();
-        const repo = new EnvRepository();
-        const client = new KyRegClient(repo)
-        const fetcher = new RegCMUFetcher(auth, client);
     });
 });

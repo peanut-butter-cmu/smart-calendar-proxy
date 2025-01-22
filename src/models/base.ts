@@ -1,1 +1,0 @@
-export type SHA256Digest = string;

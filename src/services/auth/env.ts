@@ -1,6 +1,6 @@
-import { Auth } from "./base.js";
+import { IAuth } from "./base.js";
 
-export class EnvAuth implements Auth {
+export class EnvAuth implements IAuth {
     async getCMUCredential(): Promise<{ username: string; password: string; }> {
         return {
             username: process.env.TEST_CMU_USERNAME!,

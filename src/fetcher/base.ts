@@ -1,5 +1,5 @@
-import { CalendarEvent } from "@/models/event.js"
+import { CalendarEvent } from "../models/calendarEvent.entity.js";
 
-export interface Fetcher {
+export interface IFetcher {
     getEvents(): Promise<CalendarEvent[]>
 }
