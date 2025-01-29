@@ -1,4 +1,4 @@
-import { CMUOAuth, courseScheduleDates, createCMUAxios } from "../helpers/reg-cmu.js";
+import { CMUOAuth, createCMUAxios } from "../helpers/reg-cmu.js";
 import { User } from "../models/user.entity.js";
 import { Course } from "../models/course.entity.js";
 import { DataSource, QueryRunner, Repository } from "typeorm";
@@ -10,6 +10,7 @@ import { CalendarEvent } from "../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import dayjs from "dayjs";
 import { eachDayOfInterval } from "date-fns";
+import { Session } from "../models/session.entity.js";
 
 export type LoginInfo = { username: string; password: string; };
 
@@ -40,18 +41,6 @@ export class UserService implements IUserService {
         } catch {
             return false;
         }
-    }
-
-    async signIn(cred: LoginInfo): Promise<JWTPayload | null> {
-        if (!(await this._verifyCMU(cred)))
-            return null;
-        const { studentNo } = await this._reg.getInfo(cred);
-        const user = await this._user.findOneBy({ studentNo });
-        if (!user) return this.signUp(cred);
-        return {
-            studentNo,
-            ...cred
-        };
     }
 
     private async _updateCourses(queryRunner: QueryRunner, cred: LoginInfo, user: User) {
@@ -210,6 +199,48 @@ export class UserService implements IUserService {
         ]
     }
 
+    private static async _updateSession(queryRunner: QueryRunner, cred: LoginInfo, owner: User) {
+        const session = await queryRunner.manager.findOneBy(Session, { owner });
+        if (!session) {
+            const newSession = queryRunner.manager.create(Session, {
+                owner,
+                mangoToken: "",
+            });
+            await queryRunner.manager.save(Session, newSession);
+        } else {
+            session.CMUUsername = cred.username;
+            session.CMUPassword = cred.password;
+            await queryRunner.manager.save(Session, session);
+        }
+    }
+
+    async signIn(cred: LoginInfo): Promise<JWTPayload | null> {
+        if (!(await this._verifyCMU(cred)))
+            return null;
+        const { studentNo } = await this._reg.getInfo(cred);
+        const user = await this._user.findOneBy({ studentNo });
+        if (!user) return this.signUp(cred);
+
+        const queryRunner = this._ds.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            await UserService._updateSession(queryRunner, cred, user);
+            await queryRunner.commitTransaction();
+        } catch(e) {
+            await queryRunner.rollbackTransaction();
+            console.log(e.stack);
+            throw new Error(`unable to sign in '${studentNo}' by (${e})`);
+        } finally {
+            await queryRunner.release();
+        }
+        return {
+            studentNo,
+            username: cred.username,
+            password: cred.password
+        };
+    }
+
     async signUp(cred: LoginInfo): Promise<JWTPayload | null> {
         if (!(await this._verifyCMU(cred)))
             return null;
@@ -224,6 +255,7 @@ export class UserService implements IUserService {
             let newUser = queryRunner.manager.create(User, { givenName, middleName, familyName, studentNo });
             newUser = await queryRunner.manager.save(newUser);
             newUser = await this._updateCourses(queryRunner, cred, newUser);
+            await UserService._updateSession(queryRunner, cred, newUser);
             await UserService._createDefaultGroups(queryRunner, newUser);
             await UserService._createDefaultEvents(queryRunner, newUser);
             await queryRunner.commitTransaction()
@@ -237,7 +269,8 @@ export class UserService implements IUserService {
 
         return {
             studentNo,
-            ...cred
+            username: cred.username,
+            password: cred.password
         };
     }
 }

@@ -1,4 +1,5 @@
-import { Entity, PrimaryColumn, Column } from "typeorm";
+import { Entity, PrimaryColumn, Column, Relation, ManyToMany, JoinTable } from "typeorm";
+import { User } from "./user.entity.js";
 
 @Entity()
 export class Course {
@@ -13,6 +14,10 @@ export class Course {
 
     @Column()
     title: string;
+
+    @ManyToMany(() => User)
+    @JoinTable()
+    roster: Relation<User[]>;
 
     @Column("int", { array: true })
     scheduleDays: number[];

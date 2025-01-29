@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 export function createUserRouter(userService: IUserService) {
     const router = Router();
-    router.post("/user/signin", 
+    router.post("/user/auth", 
         body("username").notEmpty(),
         body("password").notEmpty(),
         async (req, res) => { 

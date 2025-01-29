@@ -1,4 +1,3 @@
-import { CalendarEvent } from "../models/calendarEvent.entity.js";
 import { IRegClient } from "../client/reg-cmu/base.js";
 import { CMUOAuth } from "@/helpers/reg-cmu.js";
 import { LoginInfo } from "@/services/user.js";

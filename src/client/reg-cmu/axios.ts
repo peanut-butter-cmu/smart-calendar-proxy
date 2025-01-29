@@ -4,7 +4,6 @@ import { IRegClient } from "./base.js";
 import { AxiosInstance, AxiosRequestConfig } from "axios";
 import * as cheerio from "cheerio";
 import { formatDays, formatExamDate, formatStartEndSec } from "../../helpers/reg-cmu.js";
-import { IConfig } from "../../services/config.js";
 
 export type RegCourse = {
     course_no: string;
@@ -24,10 +23,8 @@ export type RegCourse = {
 
 export class AxiosRegClient implements IRegClient {
     private _instance: AxiosInstance;
-    private _config: IConfig;
     constructor(instance: AxiosInstance) {
         this._instance = instance;
-        // this._config = config;
     }
     
     private static _convertRequestOptions(options?: RequestOptions): AxiosRequestConfig {
