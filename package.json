@@ -5,7 +5,7 @@
   "scripts": {
     "test": "jest",
     "build": "tsc --build tsconfig.build.json",
-    "start": "node -r tsconfig-paths/register dist/app.js",
+    "start": "node dist/app.js",
     "dev": "nodemon --exec \"node --no-warnings=ExperimentalWarning --loader ts-node/esm\" src/app.ts"
   },
   "type": "module",
