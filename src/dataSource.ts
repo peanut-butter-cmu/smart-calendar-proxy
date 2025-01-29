@@ -1,11 +1,14 @@
 import { DataSource } from "typeorm";
 
-const IS_PRODUCTION = process.env.NODE_ENV !== 'development';
-export function createDatasource() {
-    return new DataSource({
-        type: "postgres",
-        url: process.env.DATABASE_URL!,
-        entities: [ IS_PRODUCTION ? "./dist/**/*.entity.js" : "./**/*.entity.ts" ],
-        synchronize: !IS_PRODUCTION,
-    });
-}
+export const dataSource = new DataSource({
+    type: "postgres",
+    url: process.env.DATABASE_URL!,
+    entities: [ 
+        (process.env.NODE_ENV === "development") ? 
+        "./src/models/*.entity.ts" : "./dist/models/*.entity.js"
+    ],
+    migrations: [ 
+        (process.env.NODE_ENV === "development") ? 
+        "./src/migrations/*-migration.ts" : "./dist/migrations/*-migration.js"
+    ]
+});

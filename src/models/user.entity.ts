@@ -1,9 +1,8 @@
-import { Column, Entity, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
 import { CalendarEvent } from "./calendarEvent.entity.js";
 import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
 import { Course } from "./course.entity.js";
 import { Session } from "./session.entity.js";
-// import { Session } from "./session.entity.js";
 
 @Entity()
 export class User {
@@ -29,6 +28,7 @@ export class User {
     eventsGroups: Relation<CalendarEventGroup[]>;
 
     @ManyToMany(() => Course)
+    @JoinTable()
     courses: Relation<Course[]>;
 
     @OneToOne(() => Session)

@@ -1,4 +1,4 @@
-import { Entity, PrimaryColumn, Column, Relation, ManyToMany, JoinTable } from "typeorm";
+import { Entity, PrimaryColumn, Column, Relation, ManyToMany } from "typeorm";
 import { User } from "./user.entity.js";
 
 @Entity()
@@ -16,7 +16,6 @@ export class Course {
     title: string;
 
     @ManyToMany(() => User)
-    @JoinTable()
     roster: Relation<User[]>;
 
     @Column("int", { array: true })

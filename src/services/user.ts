@@ -3,7 +3,7 @@ import { User } from "../models/user.entity.js";
 import { Course } from "../models/course.entity.js";
 import { DataSource, QueryRunner, Repository } from "typeorm";
 import { AxiosOAuthClient } from "../client/oauth-cmu/axios.js";
-import { RegCMUFetcher } from "../fetcher/reg-cmu.js";
+import { CourseInfo, RegCMUFetcher } from "../fetcher/reg-cmu.js";
 import { AxiosRegClient } from "../client/reg-cmu/axios.js";
 import { JWTPayload } from "../routes/calendar.js";
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
@@ -12,6 +12,7 @@ import dayjs from "dayjs";
 import { eachDayOfInterval } from "date-fns";
 import { Session } from "../models/session.entity.js";
 
+export type Title = "CMU" | "Class" | "Quiz" | "Assignment" | "Final" | "Midterm" | "Holiday" | "Owner";
 export type LoginInfo = { username: string; password: string; };
 
 export interface IUserService {
@@ -43,38 +44,36 @@ export class UserService implements IUserService {
         }
     }
 
+    private async _newCourse(queryRunner: QueryRunner, course: CourseInfo) {
+        const { schedule } = course;
+        const newCourse = queryRunner.manager.create(Course, {
+            code: course.courseNo,
+            lecSection: course.section.lec,
+            labSection: course.section.lab,
+            title: course.title,
+            scheduleDays: schedule.days,
+            scheduleStart: schedule.start,
+            scheduleEnd: schedule.end,
+            midtermExamStart: schedule.midterm?.start,
+            midtermExamEnd: schedule.midterm?.end,
+            finalExamStart: schedule.final?.start,
+            finalExamEnd: schedule.final?.end,
+            roster: []
+        });
+        return queryRunner.manager.save(newCourse);
+    }
+
     private async _updateCourses(queryRunner: QueryRunner, cred: LoginInfo, user: User) {
-        const courses = await this._reg.getCourses(cred);
-        const courseSaves = [];
-        user.courses = [];
-        for (const course of courses) {
-            let existingCourse = await queryRunner.manager.findOneBy(Course, {
+        const REGCourses = await this._reg.getCourses(cred);
+        const unawaitCourses = REGCourses.map(async course => await queryRunner.manager.findOne(Course, {
+            where: {
                 code: course.courseNo,
                 lecSection: course.section.lec,
-                labSection: course.section.lab
-            });
-            if (!existingCourse) {
-                const { schedule } = course;
-                existingCourse = queryRunner.manager.create(Course, {
-                    code: course.courseNo,
-                    lecSection: course.section.lec,
-                    labSection: course.section.lab,
-                    title: course.title,
-                    scheduleDays: schedule.days,
-                    scheduleStart: schedule.start,
-                    scheduleEnd: schedule.end,
-                    midtermExamStart: schedule.midterm?.start,
-                    midtermExamEnd: schedule.midterm?.end,
-                    finalExamStart: schedule.final?.start,
-                    finalExamEnd: schedule.final?.end,
-                });
-                courseSaves.push(queryRunner.manager.save(Course, existingCourse));
-            } else {
-                user.courses.push(existingCourse);
+                labSection: course.section.lab,
             }
-        }
-        user.courses.push(...(await Promise.all(courseSaves)));
-        return queryRunner.manager.save(User, user);
+        }) || this._newCourse(queryRunner, course));
+        user.courses = await Promise.all(unawaitCourses);
+        return queryRunner.manager.save(user);
     }
 
     private static async _createDefaultGroups(queryRunner: QueryRunner, owner: User) {
@@ -114,7 +113,7 @@ export class UserService implements IUserService {
         return queryRunner.manager.save(groups);
     }
 
-    private static async _getSystemGroup(queryRunner: QueryRunner, title: "CMU" | "Class" | "Quiz" | "Assignment" | "Final" | "Midterm" | "Holiday" | "Owner", owner: User): Promise<CalendarEventGroup> {
+    private static async _getSystemGroup(queryRunner: QueryRunner, title: Title, owner: User): Promise<CalendarEventGroup> {
         const group = await queryRunner.manager.findOneBy(CalendarEventGroup, { title, system: true, owner });
         if (!group) 
             throw new Error(`no '${title}' group of user '${owner.studentNo}'`);
@@ -204,6 +203,8 @@ export class UserService implements IUserService {
         if (!session) {
             const newSession = queryRunner.manager.create(Session, {
                 owner,
+                CMUUsername: cred.username,
+                CMUPassword: cred.password,
                 mangoToken: "",
             });
             await queryRunner.manager.save(Session, newSession);
@@ -218,22 +219,8 @@ export class UserService implements IUserService {
         if (!(await this._verifyCMU(cred)))
             return null;
         const { studentNo } = await this._reg.getInfo(cred);
-        const user = await this._user.findOneBy({ studentNo });
+        const user = await this._user.findOne({ where: { studentNo }, relations: ["courses"] });
         if (!user) return this.signUp(cred);
-
-        const queryRunner = this._ds.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-        try {
-            await UserService._updateSession(queryRunner, cred, user);
-            await queryRunner.commitTransaction();
-        } catch(e) {
-            await queryRunner.rollbackTransaction();
-            console.log(e.stack);
-            throw new Error(`unable to sign in '${studentNo}' by (${e})`);
-        } finally {
-            await queryRunner.release();
-        }
         return {
             studentNo,
             username: cred.username,
@@ -252,7 +239,11 @@ export class UserService implements IUserService {
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
-            let newUser = queryRunner.manager.create(User, { givenName, middleName, familyName, studentNo });
+            let newUser = queryRunner.manager.create(User, { 
+                givenName, middleName, familyName, 
+                studentNo,
+                courses: []
+            });
             newUser = await queryRunner.manager.save(newUser);
             newUser = await this._updateCourses(queryRunner, cred, newUser);
             await UserService._updateSession(queryRunner, cred, newUser);
