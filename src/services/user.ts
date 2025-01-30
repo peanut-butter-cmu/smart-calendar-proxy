@@ -224,6 +224,7 @@ export class UserService implements IUserService {
         const user = await this._user.findOne({ where: { studentNo }, relations: ["courses"] });
         if (!user) return this.signUp(cred);
         return {
+            id: user.id,
             studentNo,
             username: cred.username,
             password: cred.password
@@ -234,23 +235,23 @@ export class UserService implements IUserService {
         if (!(await this._verifyCMU(cred)))
             return null;
         const { studentNo, givenName, middleName, familyName } = await this._reg.getInfo(cred);
-        const user = await this._user.findOneBy({ studentNo });
+        let user = await this._user.findOneBy({ studentNo });
         if (user) return this.signIn(cred);
 
         const queryRunner = this._ds.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
-            let newUser = queryRunner.manager.create(User, { 
+            user = queryRunner.manager.create(User, { 
                 givenName, middleName, familyName, 
                 studentNo,
                 courses: []
             });
-            newUser = await queryRunner.manager.save(newUser);
-            newUser = await this._updateCourses(queryRunner, cred, newUser);
-            await UserService._updateSession(queryRunner, cred, newUser);
-            await UserService._createDefaultGroups(queryRunner, newUser);
-            await UserService._createDefaultEvents(queryRunner, newUser);
+            user = await queryRunner.manager.save(user);
+            user = await this._updateCourses(queryRunner, cred, user);
+            await UserService._updateSession(queryRunner, cred, user);
+            await UserService._createDefaultGroups(queryRunner, user);
+            await UserService._createDefaultEvents(queryRunner, user);
             await queryRunner.commitTransaction()
         } catch(e) {
             await queryRunner.rollbackTransaction();
@@ -261,6 +262,7 @@ export class UserService implements IUserService {
         }
 
         return {
+            id: user.id,
             studentNo,
             username: cred.username,
             password: cred.password

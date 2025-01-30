@@ -20,6 +20,6 @@ export class CalendarEvent {
     @JoinTable()
     groups: Relation<CalendarEventGroup[]>;
 
-    @ManyToOne(() => User)
+    @ManyToOne(() => User, user => user.events)
     owner: Relation<User>
 }

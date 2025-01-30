@@ -42,11 +42,15 @@ export class CalendarService implements ICalendarService {
             where: { id, owner },
             relations: ["groups"]
         });
-        return CalendarService._transformEventGroup({...originalEvent, ...event});
+        const modifiedEvent = await this._calendarEvent.save({...originalEvent, ...event});
+        return CalendarService._transformEventGroup(modifiedEvent);
     }
     async deleteEventById(owner: FindOptionsWhere<User>, id: number): Promise<boolean> {
-        const result = await this._calendarEvent.delete({ id, owner });
-        return result.affected >= 1;
+        const findResult = await this._calendarEvent.findOneBy({ id, owner });
+        if (!findResult)
+            return false;
+        const result = await this._calendarEvent.remove(findResult);
+        return result !== null;
     }
     async getEventsByOwner(owner: FindOptionsWhere<User>): Promise<CalendarEventResp[]> {
         const events = await this._calendarEvent.find({
