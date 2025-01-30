@@ -81,7 +81,9 @@ export class AxiosOAuthClient implements IOAuthClient {
         try {
             const encodedURL = AxiosOAuthClient._getFirstGroup(/pageRedirect\|\|(.+)\|/g, resp.data)[0];
             return URL.parse(decodeURIComponent(encodedURL));
-        } catch {
+        } catch(e) {
+            if (process.env.DEBUG)
+                console.log(e.stack);
             throw new Error(`invalid server response (${resp.data})!`);
         }
     }
