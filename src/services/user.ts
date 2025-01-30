@@ -39,7 +39,9 @@ export class UserService implements IUserService {
         try {
             await this._oauth.login(cred);
             return true;
-        } catch {
+        } catch(e) {
+            if (process.env.DEBUG)
+                console.debug(e.stack);
             return false;
         }
     }
