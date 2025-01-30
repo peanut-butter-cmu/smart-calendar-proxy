@@ -66,9 +66,11 @@ export class AxiosOAuthClient implements IOAuthClient {
     }
 
     // https://stackoverflow.com/a/432503
-    private static _getFirstGroup(regexp: RegExp, str: string) {
-        const array = [...str.matchAll(regexp)];
-        return array.map(m => m[1]);
+    private static _getFirstGroup(regexp: RegExp, str: string): string {
+        const mayNullArr = regexp.exec(str);
+        if (!mayNullArr && mayNullArr.length !== 2)
+            throw new Error(`exec failed with ${str}!`);
+        return mayNullArr[1];
     }
 
     async postURL(url: URL, body: OAuthPayload, options?: RequestOptions): Promise<URL | null> {
@@ -79,8 +81,8 @@ export class AxiosOAuthClient implements IOAuthClient {
                 AxiosOAuthClient._convertRequestOptions(options)
             );
         try {
-            const encodedURL = AxiosOAuthClient._getFirstGroup(/pageRedirect\|\|(.+)\|/g, resp.data)[0];
-            return URL.parse(decodeURIComponent(encodedURL));
+            const encodedURL = AxiosOAuthClient._getFirstGroup(/pageRedirect\|\|(.+)\|/g, resp.data);
+            return new URL(decodeURIComponent(encodedURL));
         } catch(e) {
             if (process.env.DEBUG)
                 console.log(e.stack);
