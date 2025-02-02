@@ -1,6 +1,8 @@
+import { AxiosRegClient } from "../client/reg-cmu/axios.js";
 import { IRegClient } from "../client/reg-cmu/base.js";
-import { CMUOAuth } from "@/helpers/reg-cmu.js";
-import { LoginInfo } from "@/services/user.js";
+import { CMUOAuth, createCMUAxios } from "../helpers/reg-cmu.js";
+import { AxiosOAuthClient } from "../client/oauth-cmu/axios.js";
+import { LoginInfo } from "../services/user/index.js";
 
 export type StudentInfo = {
     givenName: string,
@@ -32,13 +34,27 @@ export type CourseInfo = {
 export class RegCMUFetcher {
     private _reg: IRegClient;
     private _oauth: CMUOAuth;
-    constructor(client: IRegClient, oauth: CMUOAuth) {
-        this._reg = client;
-        this._oauth = oauth;
+    private _cred: LoginInfo;
+    constructor(cred: LoginInfo) {
+        const axios = createCMUAxios();
+        this._reg = new AxiosRegClient(axios);
+        this._oauth = new CMUOAuth(new AxiosOAuthClient(axios));
+        this._cred = cred;
     }
 
-    public async getInfo(cred: LoginInfo): Promise<StudentInfo> {
-        await this._oauth.login(cred);
+    public async validate(): Promise<Boolean> {
+        try {
+            await this._oauth.login(this._cred);
+            return true;
+        } catch(e) {
+            if (process.env.DEBUG)
+                console.debug(e.stack);
+            return false;
+        }
+    }
+
+    public async getStudent(): Promise<StudentInfo> {
+        await this._oauth.login(this._cred);
         const url = new URL(process.env.REG_BASE_URL);
         url.pathname = "/registrationoffice/student/main.php";
         url.searchParams.append("mainfile", "studentprofile");
@@ -46,8 +62,8 @@ export class RegCMUFetcher {
         return this._reg.getStudentInfo(url);
     }
 
-    public async getCourses(cred: LoginInfo): Promise<CourseInfo[]> {
-        await this._oauth.login(cred);
+    public async getCourses(): Promise<CourseInfo[]> {
+        await this._oauth.login(this._cred);
         const url = new URL(process.env.REG_BASE_URL);
         url.pathname = "/registrationoffice/student/calendar_exam/";
         return this._reg.getCourses(url);

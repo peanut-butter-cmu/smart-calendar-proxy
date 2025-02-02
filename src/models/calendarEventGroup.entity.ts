@@ -4,14 +4,14 @@ import { User } from "./user.entity.js";
 @Entity()
 export class CalendarEventGroup {
     @PrimaryGeneratedColumn()
-    id: number;
+    public id: number;
 
     @Column()
-    title: string;
+    public title: string;
 
     @Column()
-    system: boolean;
+    public system: boolean;
 
     @ManyToOne(() => User, (user) => user.eventsGroups)
-    owner: Relation<User>;
+    public owner: Relation<User>;
 }

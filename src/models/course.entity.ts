@@ -1,41 +1,47 @@
-import { Entity, PrimaryColumn, Column, Relation, ManyToMany } from "typeorm";
+import { Entity, PrimaryColumn, Column, Relation, ManyToMany, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity.js";
 
 @Entity()
 export class Course {
     @PrimaryColumn()
-    code: string;
+    public code: string;
 
     @PrimaryColumn()
-    lecSection: string;
+    public lecSection: string;
 
     @PrimaryColumn()
-    labSection: string;
+    public labSection: string;
 
     @Column()
-    title: string;
+    public title: string;
 
     @ManyToMany(() => User)
-    roster: Relation<User[]>;
+    public roster: Relation<User[]>;
 
     @Column("int", { array: true })
-    scheduleDays: number[];
+    public scheduleDays: number[];
 
     @Column()
-    scheduleStart: number;
+    public scheduleStart: number;
 
     @Column()
-    scheduleEnd: number;
+    public scheduleEnd: number;
 
     @Column({ nullable: true })
-    midtermExamStart: Date;
+    public midtermExamStart: Date;
 
     @Column({ nullable: true })
-    midtermExamEnd: Date;
+    public midtermExamEnd: Date;
 
     @Column({ nullable: true })
-    finalExamStart: Date;
+    public finalExamStart: Date;
 
     @Column({ nullable: true })
-    finalExamEnd: Date;
+    public finalExamEnd: Date;
+
+    @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
+    public created: Date;
+    
+    @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
+    public modified: Date;
 }

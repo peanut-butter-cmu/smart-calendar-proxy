@@ -1,56 +1,14 @@
-import { ICalendarService } from "../services/calendar.js";
+import { ICalendarService } from "../../services/calendar/index.js";
 import { Router, Response } from "express";
 import { expressjwt, Request as JWTRequest } from "express-jwt";
-import { checkSchema, param, validationResult } from "express-validator";
+import { param, validationResult } from "express-validator";
+import { bodySchema, bodySchemaEdit } from "./schema.js";
 
 export type JWTPayload = {
     id: number;
-    studentNo: number;
     username: string;
     password: string;
 }
-
-const bodySchema = checkSchema({
-    title: {
-        in: ["body"],
-        isString: true,
-        isLength: {
-            options: { min: 1, max: 32 }
-        },
-        notEmpty: true
-    },
-    start: {
-        in: ["body"],
-        isDate: true,
-        notEmpty: true
-    },
-    end: {
-        in: ["body"],
-        isDate: true,
-        notEmpty: true
-    }
-});
-
-const bodySchemaEdit = checkSchema({
-    title: {
-        in: ["body"],
-        optional: true,
-        isString: true,
-        isLength: {
-            options: { min: 1, max: 32 }
-        },
-    },
-    start: {
-        in: ["body"],
-        optional: true,
-        isDate: true,
-    },
-    end: {
-        in: ["body"],
-        optional: true,
-        isDate: true,
-    }
-});
 
 export function createCalendarRouter(calendarService: ICalendarService) {
     const router = Router();
@@ -60,11 +18,11 @@ export function createCalendarRouter(calendarService: ICalendarService) {
             algorithms: ["HS256"]
         }),
         async (req: JWTRequest<JWTPayload>, res: Response) => {
-            if (!req.auth || !req.auth.studentNo) {
+            if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
-            const events = await calendarService.getEventsByOwner({ id: req.auth.id });
+            const events = await calendarService.getEventsByOwner(req.auth.id);
             if (!events) {
                 res.sendStatus(401);
                 return;
@@ -77,11 +35,11 @@ export function createCalendarRouter(calendarService: ICalendarService) {
             algorithms: ["HS256"]
         }),
         async (req: JWTRequest<JWTPayload>, res: Response) => {
-            if (!req.auth || !req.auth.studentNo) {
+            if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
-            const groups = await calendarService.getGroupsByOwner({ id: req.auth.id });
+            const groups = await calendarService.getGroupsByOwner(req.auth.id);
             if (!groups) {
                 res.sendStatus(401);
                 return;
@@ -95,17 +53,17 @@ export function createCalendarRouter(calendarService: ICalendarService) {
             algorithms: ["HS256"]
         }),
         async (req: JWTRequest<JWTPayload>, res: Response) => {
-            const result = validationResult(req);
-            if (!result.isEmpty()) {
-                res.send(result.array());
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send(valResult.array());
                 return;
             }
-            if (!req.auth || !req.auth.studentNo) {
+            if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
             const params = req.params as any;
-            const event = await calendarService.getEventById({ id: req.auth.id }, params.id);
+            const event = await calendarService.getEventById(req.auth.id, params.id);
             if (!event) {
                 res.sendStatus(404);
                 return;
@@ -119,16 +77,21 @@ export function createCalendarRouter(calendarService: ICalendarService) {
         }),
         bodySchema,
         async (req: JWTRequest<JWTPayload>, res: Response) => {
-            if (!req.auth || !req.auth.studentNo) {
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send(valResult.array());
+                return;
+            }
+            if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
-            const groups = await calendarService.getGroupsByOwner({ id: req.auth.id });
-            if (!groups) {
-                res.sendStatus(401);
+            const newEvent = await calendarService.createEvent(req.auth.id, req.body);
+            if (!newEvent) {
+                res.sendStatus(400);
                 return;
             }
-            res.send(groups);
+            res.send(newEvent);
         });
     router.patch("/calendar/event/:id",
         param("id").notEmpty().isNumeric(),
@@ -138,17 +101,17 @@ export function createCalendarRouter(calendarService: ICalendarService) {
         }),
         bodySchemaEdit,
         async (req: JWTRequest<JWTPayload>, res: Response) => {
-            const result = validationResult(req);
-            if (!result.isEmpty()) {
-                res.send(result.array());
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send(valResult.array());
                 return;
             }
-            if (!req.auth || !req.auth.studentNo) {
+            if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
             const params = req.params as any;
-            const event = await calendarService.editEventById({ id: req.auth.id }, params.id, req.body);
+            const event = await calendarService.editEventById(req.auth.id, params.id, req.body);
             if (!event) {
                 res.sendStatus(404);
                 return;
@@ -162,17 +125,17 @@ export function createCalendarRouter(calendarService: ICalendarService) {
             algorithms: ["HS256"]
         }),
         async (req: JWTRequest<JWTPayload>, res: Response) => {
-            const result = validationResult(req);
-            if (!result.isEmpty()) {
-                res.send(result.array());
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send(valResult.array());
                 return;
             }
-            if (!req.auth || !req.auth.studentNo) {
+            if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
             const params = req.params as any;
-            const deleteResult = await calendarService.deleteEventById({ id: req.auth.id }, params.id);
+            const deleteResult = await calendarService.deleteEventById(req.auth.id, params.id);
             if (deleteResult)
                 res.sendStatus(200);
             else

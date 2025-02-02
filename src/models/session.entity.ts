@@ -1,21 +1,27 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity.js";
 
 @Entity()
 export class Session {
     @PrimaryGeneratedColumn()
-    id: string;
+    public id: string;
 
     @Column()
-    CMUUsername: string;
+    public CMUUsername: string;
 
     @Column()
-    CMUPassword: string;
+    public CMUPassword: string;
 
     @Column()
-    mangoToken: string;
+    public mangoToken: string;
+    
+    @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
+    public created: Date;
+    
+    @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
+    public modified: Date;
 
     @OneToOne(() => User)
     @JoinColumn()
-    owner: Relation<User>
+    public owner: Relation<User>
 }

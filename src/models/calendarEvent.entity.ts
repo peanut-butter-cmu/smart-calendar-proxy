@@ -1,25 +1,31 @@
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity.js";
 import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
 
 @Entity()
 export class CalendarEvent {
     @PrimaryGeneratedColumn()
-    id: number;
+    public id: number;
 
     @Column()
-    title: string;
+    public title: string;
 
     @Column()
-    start: Date;
+    public start: Date;
 
     @Column()
-    end: Date;
+    public end: Date;
+
+    @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
+    public created: Date;
+
+    @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
+    public modified: Date;
 
     @ManyToMany(() => CalendarEventGroup)
     @JoinTable()
-    groups: Relation<CalendarEventGroup[]>;
+    public groups: Relation<CalendarEventGroup[]>;
 
     @ManyToOne(() => User, user => user.events)
-    owner: Relation<User>
+    public owner: Relation<User>
 }

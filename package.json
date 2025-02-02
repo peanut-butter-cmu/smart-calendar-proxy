@@ -7,7 +7,7 @@
     "build": "tsc --build tsconfig.build.json",
     "start": "node dist/app.js",
     "dev": "nodemon --exec \"cross-env NODE_ENV=development node --no-warnings=ExperimentalWarning --loader ts-node/esm\" src/app.ts",
-    "migration:generate": "typeorm-ts-node-esm migration:generate ./src/migrations/migration -d ./src/dataSource.ts",
+    "migration:generate": "cross-env NODE_ENV=development typeorm-ts-node-esm migration:generate ./src/migrations/migration -d ./src/dataSource.ts",
     "migration:run": "typeorm migration:run -d ./dist/dataSource.js"
   },
   "type": "module",

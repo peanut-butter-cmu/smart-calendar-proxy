@@ -1,6 +1,6 @@
+import { IUserService } from "../services/user/index.js";
 import { Router } from "express";
 import { body, validationResult } from "express-validator";
-import { IUserService } from "../services/user.js";
 import jwt from "jsonwebtoken";
 
 export function createUserRouter(userService: IUserService) {
@@ -14,13 +14,11 @@ export function createUserRouter(userService: IUserService) {
                 res.send(result.array());
                 return;
             }
-            const signInResult = await userService.signIn(req.body);
-            if (!signInResult)
+            const authResult = await userService.auth(req.body);
+            if (!authResult)
                 res.sendStatus(401);
-            else {
-                const token = jwt.sign(signInResult, process.env.APP_JWT_SECRET);
-                res.send(token);
-            }
+            else
+                res.send(jwt.sign(authResult, process.env.APP_JWT_SECRET));
         });
     return router;
 }
