@@ -22,10 +22,10 @@ app.use(express.json());
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin)
-      cb(null, true);
+      return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin))
-      cb(null, true);
-    cb(new Error("not allowed by CORS"));
+      return cb(null, true);
+    return cb(new Error("not allowed by CORS"));
   }
 }));
 dataSource.initialize().then(() => {
