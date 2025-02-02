@@ -21,12 +21,15 @@ const app = express();
 app.use(express.json());
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin)
+    if (process.env.NODE_ENV === "development" || !origin)
       return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin))
       return cb(null, true);
     return cb(new Error("not allowed by CORS"));
-  }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 dataSource.initialize().then(() => {
     app.use(createRouter(dataSource));
