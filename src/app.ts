@@ -15,10 +15,19 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault(process.env.APP_TIMEZONE);
 
+const ALLOWED_ORIGINS = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin)
+      cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin))
+      cb(null, true);
+    cb(new Error("not allowed by CORS"));
+  }
+}));
 dataSource.initialize().then(() => {
     app.use(createRouter(dataSource));
     app.listen(port, () => {
