@@ -218,7 +218,10 @@ export class CMUOAuth {
         url.searchParams.append("continue", process.env.REG_OAUTH_CONTINUE);
         return this._client.postURL(
             url, createOAuthPayload({ username, password }, this._oauth!)
-        );
+        ).catch(err => {
+            console.error(err);
+            return null;
+        });
     }
 
     /* flow ของการ login ที่ oauth เป็นดังนี้
