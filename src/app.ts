@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
-// import cors from "cors";
+import cors from "cors";
 
 configDotenv({ path: ".env" });
 dayjs.extend(customParseFormat);
@@ -15,15 +15,14 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault(process.env.APP_TIMEZONE);
 
-// const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
+const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
-// const databaseURL = process.env.DATABASE_URL!;
-// const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
+const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
 
 app.use(express.json());
-// app.use(corsMiddleware);
-// app.options("*", corsMiddleware);
+app.use(corsMiddleware);
+app.options("*", corsMiddleware);
 dataSource.initialize().then(initializedDS => {
     app.use(createRouter(initializedDS));
     app.listen(port, () => {
