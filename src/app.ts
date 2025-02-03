@@ -2,7 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import { createRouter } from "./routes/index.js"
 import { configDotenv } from "dotenv";
-import { createDataSource } from "./dataSource.js";
+import { dataSource } from "./dataSource.js";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 import utc from "dayjs/plugin/utc.js";
@@ -24,8 +24,8 @@ const databaseURL = process.env.DATABASE_URL!;
 app.use(express.json());
 // app.use(corsMiddleware);
 // app.options("*", corsMiddleware);
-createDataSource(databaseURL).initialize().then(dataSource => {
-    app.use(createRouter(dataSource));
+dataSource.initialize().then(initializedDS => {
+    app.use(createRouter(initializedDS));
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);
     });
