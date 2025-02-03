@@ -19,18 +19,7 @@ const ALLOWED_ORIGINS = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: (origin, cb) => {
-    if (process.env.NODE_ENV === "development" || !origin)
-      return cb(null, true);
-    if (ALLOWED_ORIGINS.includes(origin))
-      return cb(null, true);
-    return cb(new Error("not allowed by CORS"));
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}));
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 dataSource.initialize().then(() => {
     app.use(createRouter(dataSource));
     app.listen(port, () => {
