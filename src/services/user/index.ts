@@ -1,5 +1,5 @@
 import { DataSource, QueryRunner } from "typeorm";
-import { CourseInfo, RegCMUFetcher, StudentInfo } from "../../fetcher/reg-cmu.js";
+import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
 import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
 import { CalendarTransaction } from "../calendar/transaction.js";
