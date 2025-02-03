@@ -2,7 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import { createRouter } from "./routes/index.js"
 import { configDotenv } from "dotenv";
-import { dataSource } from "./dataSource.js";
+import { createDataSource } from "./dataSource.js";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 import utc from "dayjs/plugin/utc.js";
@@ -15,12 +15,16 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault(process.env.APP_TIMEZONE);
 
-const ALLOWED_ORIGINS = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
+const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
+const databaseURL = process.env.DATABASE_URL!;
+const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
+
 app.use(express.json());
-app.use(cors({ origin: ALLOWED_ORIGINS }));
-dataSource.initialize().then(() => {
+app.use(corsMiddleware);
+app.options("*", corsMiddleware);
+createDataSource(databaseURL).initialize().then(dataSource => {
     app.use(createRouter(dataSource));
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);

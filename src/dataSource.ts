@@ -1,8 +1,8 @@
 import { DataSource } from "typeorm";
 
-export const dataSource = new DataSource({
+export const createDataSource = (databaseURL: string) => new DataSource({
     type: "postgres",
-    url: process.env.DATABASE_URL!,
+    url: databaseURL,
     entities: [ 
         (process.env.NODE_ENV === "development") ? 
         "./src/models/*.entity.ts" : "./dist/models/*.entity.js"
