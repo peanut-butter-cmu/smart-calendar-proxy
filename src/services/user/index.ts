@@ -33,7 +33,7 @@ export class UserService implements IUserService {
         return await UserService._signIn(reg, queryRunner) || await UserService._signUp(reg, queryRunner, cred);
     }
 
-    private static async _handleError<T, A extends any[]>(name: string, fn: (...args: A) => Promise<T>, ...args: A): Promise<T | null> {
+    private static async _handleError<T, A extends any[] = any[]>(name: string, fn: (...args: A) => Promise<T>, ...args: A): Promise<T | null> {
         try {
             return fn(...args)
         } catch(err) {
@@ -43,7 +43,7 @@ export class UserService implements IUserService {
     }
 
     private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload | null> {
-        const maybeStudent = await UserService._handleError("SignIn", reg.getStudent);
+        const maybeStudent = await UserService._handleError("SignIn", () => reg.getStudent());
         if (!maybeStudent)
             return null;
         const { studentNo } = maybeStudent;
