@@ -33,28 +33,30 @@ export class UserService implements IUserService {
         return await UserService._signIn(reg, queryRunner) || await UserService._signUp(reg, queryRunner, cred);
     }
 
-    private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload | null> {
-        let studentNoGlobal: number;
+    private static async _handleError<T, A extends any[]>(name: string, fn: (...args: A) => Promise<T>, ...args: A): Promise<T | null> {
         try {
-            const { studentNo } = await reg.getStudent();
-            studentNoGlobal = studentNo;
+            return fn(...args)
         } catch(err) {
-            console.error(`SignIn: error ${err}}`);
+            console.error(`${name}: error ${err}}`);
             return null;
         }
+    }
+
+    private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload | null> {
+        const maybeStudent = await UserService._handleError("SignIn", reg.getStudent);
+        if (!maybeStudent)
+            return null;
+        const { studentNo } = maybeStudent;
         const signInTrans = new UserTransaction("SignIn", queryRunner);
-        await signInTrans.initByStudentNo(studentNoGlobal);
+        await signInTrans.initByStudentNo(studentNo);
         return signInTrans.finalize();
     }
 
     private static async _signUp(reg: RegCMUFetcher, queryRunner: QueryRunner, cred: LoginInfo): Promise<JWTPayload | null> {
-        let student: StudentInfo, courses: CourseInfo[];
-        try {
-            [student, courses] = await Promise.all([reg.getStudent(), reg.getCourses()]);
-        } catch (err) {
-            console.error(`SignUp: error ${err}, cred ${cred}`);
+        const maybeResult = await UserService._handleError("SignUp", () => Promise.all([reg.getStudent(), reg.getCourses()]));
+        if (!maybeResult)
             return null;
-        }
+        const [ student, courses ] = maybeResult;
         const signUpTrans = new UserTransaction("SignUp", queryRunner);
         await signUpTrans.initByStudentInfo(student);
         await signUpTrans.updateSession(cred);
