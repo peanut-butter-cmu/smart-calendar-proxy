@@ -19,11 +19,11 @@ const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
 const databaseURL = process.env.DATABASE_URL!;
-const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
+// const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
 
 app.use(express.json());
-app.use(corsMiddleware);
-app.options("*", corsMiddleware);
+// app.use(corsMiddleware);
+// app.options("*", corsMiddleware);
 createDataSource(databaseURL).initialize().then(dataSource => {
     app.use(createRouter(dataSource));
     app.listen(port, () => {
