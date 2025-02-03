@@ -1,5 +1,5 @@
 import { DataSource, QueryRunner } from "typeorm";
-import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
+import { CourseInfo, RegCMUFetcher, StudentInfo } from "../../fetcher/reg-cmu.js";
 import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
 import { CalendarTransaction } from "../calendar/transaction.js";
@@ -34,14 +34,27 @@ export class UserService implements IUserService {
     }
 
     private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload | null> {
-        const { studentNo } = await reg.getStudent();
+        let studentNoGlobal: number;
+        try {
+            const { studentNo } = await reg.getStudent();
+            studentNoGlobal = studentNo;
+        } catch(err) {
+            console.error(`SignIn: error ${err}}`);
+            return null;
+        }
         const signInTrans = new UserTransaction("SignIn", queryRunner);
-        await signInTrans.initByStudentNo(studentNo);
+        await signInTrans.initByStudentNo(studentNoGlobal);
         return signInTrans.finalize();
     }
 
     private static async _signUp(reg: RegCMUFetcher, queryRunner: QueryRunner, cred: LoginInfo): Promise<JWTPayload | null> {
-        const [student, courses] = await Promise.all([reg.getStudent(), reg.getCourses()]);
+        let student: StudentInfo, courses: CourseInfo[];
+        try {
+            [student, courses] = await Promise.all([reg.getStudent(), reg.getCourses()]);
+        } catch (err) {
+            console.error(`SignUp: error ${err}, cred ${cred}`);
+            return null;
+        }
         const signUpTrans = new UserTransaction("SignUp", queryRunner);
         await signUpTrans.initByStudentInfo(student);
         await signUpTrans.updateSession(cred);
