@@ -66,7 +66,7 @@ export class CalendarTransaction {
         return this._manager.save(classEvents);
     }
 
-    private async _generateExamEvent(group: GroupTitle.MIDTERM | GroupTitle.FINAL, courses: CourseInfo[]) {
+    private async _generateExamEvent(group: GroupTitle.MIDTERM | GroupTitle.FINAL, courses: CourseInfo[], groups: CalendarEventGroup[]) {
         const desiredGroup = await this._manager.findOneByOrFail(CalendarEventGroup, {
             title: group,
             system: true,
@@ -80,7 +80,7 @@ export class CalendarTransaction {
             .filter(course => course.exam)
             .map(({title, exam}) => ({
                 title,
-                groups: [desiredGroup],
+                groups: [desiredGroup, groups.find(group => group.title === title)],
                 start: exam.start,
                 end: exam.end,
                 owner: { id: this._ownerId }
@@ -89,12 +89,12 @@ export class CalendarTransaction {
         return this._manager.save(examEvents);
     }
 
-    public async generateMidtermExamEvent(courses: CourseInfo[]) {
-        return this._generateExamEvent(GroupTitle.MIDTERM, courses);
+    public async generateMidtermExamEvent(courses: CourseInfo[], groups: CalendarEventGroup[]) {
+        return this._generateExamEvent(GroupTitle.MIDTERM, courses, groups);
     }
 
-    public async generateFinalExamEvent(courses: CourseInfo[]) {
-        return this._generateExamEvent(GroupTitle.FINAL, courses);
+    public async generateFinalExamEvent(courses: CourseInfo[], groups: CalendarEventGroup[]) {
+        return this._generateExamEvent(GroupTitle.FINAL, courses, groups);
     }
 
     public async cleanClassEvent() {

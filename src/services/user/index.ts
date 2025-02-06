@@ -58,8 +58,8 @@ export class UserService implements IUserService {
         await calendarTrans.init();
         const courseGroups = await calendarTrans.generateDefaultGroup(courses);
         await calendarTrans.generateClassEvent(courses, courseGroups);
-        await calendarTrans.generateMidtermExamEvent(courses);
-        await calendarTrans.generateFinalExamEvent(courses);
+        await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
+        await calendarTrans.generateFinalExamEvent(courses, courseGroups);
         await calendarTrans.finalize();
         return payload;
     }
