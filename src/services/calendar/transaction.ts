@@ -20,19 +20,27 @@ export class CalendarTransaction {
         await this._qRnr.startTransaction();
     }
 
-    public async generateDefaultGroup() {
+    public async generateDefaultGroup(courses: CourseInfo[]): Promise<CalendarEventGroup[]> {
+        const categoryGroups = Object.values(GroupTitle).map(title => ({ 
+            title, 
+            system: true, 
+            owner: { id: this._ownerId } 
+        }));
+        const courseGroups = courses.map(course => ({
+            title: course.title,
+            system: true,
+            owner: { id: this._ownerId }
+        }));
+        const courseGroupTitles = courseGroups.map(({title}) => title);
         const groups = this._manager.create(
             CalendarEventGroup, 
-            Object.values(GroupTitle).map(title => ({ 
-                title, 
-                system: true, 
-                owner: { id: this._ownerId } 
-            })
-        ));
-        return this._manager.save(groups);
+            [ ...categoryGroups, ...courseGroups ]
+        );
+        const savedGroups = await this._manager.save(groups);
+        return savedGroups.filter(({title}) => courseGroupTitles.includes(title));
     }
 
-    public async generateClassEvent(courses: CourseInfo[]) {
+    public async generateClassEvent(courses: CourseInfo[], courseGroups: CalendarEventGroup[]) {
         const startPeriod = new Date("2024-11-11");
         const endPeriod = new Date("2025-03-11");
         const dayInSemester = eachDayOfInterval({ start: startPeriod, end: endPeriod });
@@ -48,7 +56,10 @@ export class CalendarTransaction {
             .map(evnt => ({
                 ...evnt,
                 title: title,
-                groups: [classGroup],
+                groups: [
+                    classGroup, 
+                    courseGroups.find((courseGroup) => courseGroup.title === title)
+                ],
                 owner: { id: this._ownerId }
             }))
         }).flat());

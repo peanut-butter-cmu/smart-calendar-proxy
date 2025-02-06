@@ -56,8 +56,8 @@ export class UserService implements IUserService {
             return null;
         const calendarTrans = new CalendarTransaction(queryRunner, payload.id);
         await calendarTrans.init();
-        await calendarTrans.generateDefaultGroup();
-        await calendarTrans.generateClassEvent(courses);
+        const courseGroups = await calendarTrans.generateDefaultGroup(courses);
+        await calendarTrans.generateClassEvent(courses, courseGroups);
         await calendarTrans.generateMidtermExamEvent(courses);
         await calendarTrans.generateFinalExamEvent(courses);
         await calendarTrans.finalize();
