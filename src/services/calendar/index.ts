@@ -2,11 +2,9 @@ import { DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
 
-export type NoMetadata<T> = {
-    [K in keyof T]: K extends "created" | "modified" ? never : T[K];
-};
-
-export type CalendarEventResp = Omit<NoMetadata<CalendarEvent>, "groups"> & {
+export type CalendarEventResp = Omit<CalendarEvent, "groups" | "start" | "end" | "created" | "modified"> & {
+    start: string;
+    end: string;
     groups: number[];
 };
 
@@ -28,14 +26,15 @@ export class CalendarService implements ICalendarService {
         this._calendarEvent = dataSource.getRepository(CalendarEvent);
         this._calendarEGroup = dataSource.getRepository(CalendarEventGroup);
     }
-    private static _removeMetadata<T extends { created: Date, modified: Date }>(original: T): NoMetadata<T> {
-        const cloned = {...original};
-        delete cloned.modified;
-        delete cloned.created;
-        return cloned as NoMetadata<T>;
-    }
-    private static _transformGroups(event: CalendarEvent): CalendarEventResp {
-        return {...(CalendarService._removeMetadata(event)), groups: event.groups.map(({id}) => id)}
+    private static _transformResp(event: CalendarEvent): CalendarEventResp {
+        return {
+            id: event.id,
+            title: event.title,
+            groups: event.groups.map(({id}) => id),
+            start: event.start.toISOString(),
+            end: event.end.toISOString(),
+            owner: event.owner,
+        };
     }
     async createEvent(userId: number, event: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null> {
         const ownerGroup = await this._calendarEGroup.findOneBy({ 
@@ -50,7 +49,7 @@ export class CalendarService implements ICalendarService {
             owner: { id: userId },
             groups: [ownerGroup]
         });
-        return CalendarService._transformGroups(await this._calendarEvent.save(newEvent));
+        return CalendarService._transformResp(await this._calendarEvent.save(newEvent));
     }
     async getEventById(ownerId: number, eventId: number): Promise<CalendarEventResp | null> {
         const event = await this._calendarEvent.findOne({ 
@@ -60,7 +59,7 @@ export class CalendarService implements ICalendarService {
         if (!event)
             return null;
         else
-            return CalendarService._transformGroups(event);
+            return CalendarService._transformResp(event);
     }
     async editEventById(ownerId: number, eventId: number, newEvent: Partial<CalendarEvent>): Promise<CalendarEventResp | null> {
         const originalEvent = await this._calendarEvent.findOne({ 
@@ -75,7 +74,7 @@ export class CalendarService implements ICalendarService {
             
         }
         const modifiedEvent = await this._calendarEvent.save({...originalEvent, ...newEvent});
-        return CalendarService._transformGroups(modifiedEvent);
+        return CalendarService._transformResp(modifiedEvent);
     }
     async deleteEventById(ownerId: number, eventId: number): Promise<boolean> {
         const findResult = await this._calendarEvent.findOneBy({ id: eventId, owner: { id: ownerId } });
@@ -91,7 +90,7 @@ export class CalendarService implements ICalendarService {
         });
         return events
             .map(({ id, title, start, end, groups }) => ({ id, title, start, end, groups })) // filter only needed keys
-            .map(CalendarService._transformGroups); // map groups to extract only id
+            .map(CalendarService._transformResp); // map groups to extract only id
     }
     async getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]> {
         const groups = await this._calendarEGroup.findBy({ owner: { id: ownerId } });
