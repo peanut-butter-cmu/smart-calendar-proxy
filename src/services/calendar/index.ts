@@ -1,7 +1,6 @@
 import { DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
-import dayjs from "dayjs";
 
 export type CalendarEventResp = Omit<CalendarEvent, "groups" | "start" | "end" | "created" | "modified"> & {
     start: string;
