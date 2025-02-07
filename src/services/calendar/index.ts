@@ -27,6 +27,7 @@ export class CalendarService implements ICalendarService {
         this._calendarEGroup = dataSource.getRepository(CalendarEventGroup);
     }
     private static _transformResp(event: CalendarEvent): CalendarEventResp {
+        console.log(event.start, event.end);
         return {
             id: event.id,
             title: event.title,
