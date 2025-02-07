@@ -14,6 +14,7 @@ dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault(process.env.APP_TIMEZONE);
+console.log(`App Timezone: ${process.env.APP_TIMEZONE}`);
 
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;

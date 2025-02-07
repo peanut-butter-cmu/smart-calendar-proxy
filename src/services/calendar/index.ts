@@ -32,8 +32,8 @@ export class CalendarService implements ICalendarService {
             id: event.id,
             title: event.title,
             groups: event.groups.map(({id}) => id),
-            start: dayjs(event.start).utc().toISOString(), // fix no utc
-            end: dayjs(event.end).utc().toISOString(),
+            start: event.start.toISOString(),
+            end: event.end.toISOString(),
             owner: event.owner,
         };
     }
