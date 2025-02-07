@@ -31,7 +31,26 @@ export class User {
     public eventsGroups: Relation<CalendarEventGroup[]>;
 
     @ManyToMany(() => Course)
-    @JoinTable()
+    @JoinTable({
+        joinColumns: [{
+            name: "user_id",
+            referencedColumnName: "id"
+        }],
+        inverseJoinColumns: [
+            {
+                name: "course_code",
+                referencedColumnName: "code"
+            },
+            {
+                name: "course_lec",
+                referencedColumnName: "lecSection"
+            },
+            {
+                name: "course_lab",
+                referencedColumnName: "labSection"
+            }
+        ]
+    })
     public courses: Relation<Course[]>;
 
     @OneToOne(() => Session)

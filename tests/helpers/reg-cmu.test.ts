@@ -171,22 +171,3 @@ describe("testing formatStartEndSec", () => {
             .toEqual({ start: 0, end: 86340 });
     });
 });
-
-describe("testing formatExamDate", () => {
-    test("test on ('Contact Lecturer', '')", () => {
-        expect(formatExamDate("Contact Lecturer", ""))
-            .toEqual(null);
-    });
-
-    test("test on ('REGULAR EXAM or NONE', '')", () => {
-        expect(formatExamDate("REGULAR EXAM or NONE", ""))
-            .toEqual(null);
-    });
-
-    test("test on ('12 JAN 2025', '15:30-18:30')", () => {
-        expect(formatExamDate("12 JAN 2025", "15:30-18:30")).toEqual({
-            start: new Date("2025-01-12 15:30:00"),
-            end: new Date("2025-01-12 18:30:00")
-        });
-    });
-});

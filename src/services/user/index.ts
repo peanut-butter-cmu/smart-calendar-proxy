@@ -33,12 +33,14 @@ export class UserService implements IUserService {
         try {
             return await UserService._signIn(reg, queryRunner) || await UserService._signUp(reg, queryRunner, cred);
         } catch(err) {
-            console.error(`auth: cred = ${cred}, error = ${err}}`);
+            if (process.env.DEBUG)
+                console.log(err.stack);
+            console.error(`cred = ${JSON.stringify(cred)}, error = ${err}}`);
             return null;
         }
     }
 
-    private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload> {
+    private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload | null> {
         const { studentNo } = await reg.getStudent();
         const signInTrans = new UserTransaction("SignIn", queryRunner);
         await signInTrans.initByStudentNo(studentNo);
@@ -52,8 +54,6 @@ export class UserService implements IUserService {
         await signUpTrans.updateSession(cred);
         await signUpTrans.updateCourses(courses);
         const payload = await signUpTrans.finalize();
-        if (!payload)
-            return null;
         const calendarTrans = new CalendarTransaction(queryRunner, payload.id);
         await calendarTrans.init();
         const courseGroups = await calendarTrans.generateDefaultGroup(courses);
