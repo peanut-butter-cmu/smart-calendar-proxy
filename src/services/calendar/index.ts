@@ -1,6 +1,7 @@
 import { DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
+import dayjs from "dayjs";
 
 export type CalendarEventResp = Omit<CalendarEvent, "groups" | "start" | "end" | "created" | "modified"> & {
     start: string;
@@ -31,8 +32,8 @@ export class CalendarService implements ICalendarService {
             id: event.id,
             title: event.title,
             groups: event.groups.map(({id}) => id),
-            start: event.start.toISOString(),
-            end: event.end.toISOString(),
+            start: dayjs(event.start).utc().toISOString(), // fix no utc
+            end: dayjs(event.end).utc().toISOString(),
             owner: event.owner,
         };
     }
