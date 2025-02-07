@@ -105,9 +105,7 @@ export class UserTransaction {
         }
         await this._qRnr.commitTransaction();
         return {
-            id: this._user.instance.id,
-            username: this._user.username,
-            password: this._user.password
+            id: this._user.instance.id
         }
     }
 }

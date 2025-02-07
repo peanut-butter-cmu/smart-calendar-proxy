@@ -3,6 +3,7 @@ import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
 import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
 import { CalendarTransaction } from "../calendar/transaction.js";
+import { User } from "../../models/user.entity.js";
 
 export enum GroupTitle {
     CMU = "CMU",
@@ -15,9 +16,16 @@ export enum GroupTitle {
     OWNER = "Owner"
 }
 export type LoginInfo = { username: string; password: string; };
+export type UserInfo = {
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    studentNo: number;
+}
 
 export interface IUserService {
     auth(cred: LoginInfo): Promise<JWTPayload | null>;
+    userInfo(userId: number): Promise<UserInfo | null>;
 }
 
 export class UserService implements IUserService {
@@ -25,7 +33,6 @@ export class UserService implements IUserService {
     constructor(dataSource: DataSource) {
         this._ds = dataSource;
     }
-
     public async auth(cred: LoginInfo): Promise<JWTPayload | null> {
         const reg = new RegCMUFetcher(cred);
         const queryRunner = this._ds.createQueryRunner();
@@ -62,5 +69,16 @@ export class UserService implements IUserService {
         await calendarTrans.generateFinalExamEvent(courses, courseGroups);
         await calendarTrans.finalize();
         return payload;
+    }
+    public async userInfo(userId: number): Promise<UserInfo | null> {
+        const user = await this._ds.manager.findOneBy(User, { id: userId });
+        if (!user)
+            return null;
+        return {
+            firstName: user.givenName,
+            middleName: user.middleName,
+            lastName: user.familyName,
+            studentNo: user.studentNo
+        }
     }
 }
