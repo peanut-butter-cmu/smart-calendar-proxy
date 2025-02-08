@@ -18,10 +18,10 @@ export class UserTransaction {
         this._name = name;
     }
 
-    private _userInitValidation() {
+    private async _userInitValidation() {
         if (this._user.instance)
             return;
-        this._qRnr.rollbackTransaction();
+        await this._qRnr.rollbackTransaction();
         throw new Error(`user not init in ${this._name}`);
     }
 
@@ -48,44 +48,39 @@ export class UserTransaction {
     }
 
     public async updateCourses(courses: CourseInfo[]) {
-        this._userInitValidation();
-        const existingCourses = await this._manager.findBy(Course, courses.map(course => ({
-            code: course.courseNo,
-            lecSection: course.section.lec,
-            labSection: course.section.lab
-        })));
-        const existingCoursesMap = new Map<{
-            code: string, 
-            lecSection: string, 
-            labSection: string
-        }, boolean>(existingCourses.map(course => [{
-            code: course.code,
-            lecSection: course.lecSection,
-            labSection: course.labSection
-        }, true]));
-        const newCourses = courses.filter(course => !existingCoursesMap.has({
-            code: course.courseNo,
-            lecSection: course.section.lec,
-            labSection: course.section.lab
-        })).map(({courseNo, section, title, schedule}) => ({
-            code: courseNo,
-            lecSection: section.lec,
-            labSection: section.lab,
-            title: title,
-            scheduleDays: schedule.days,
-            scheduleStart: schedule.start,
-            scheduleEnd: schedule.end,
-            midtermExamStart: schedule.midterm?.start,
-            midtermExamEnd: schedule.midterm?.end,
-            finalExamStart: schedule.final?.start,
-            finalExamEnd: schedule.final?.end,
-            roster: []
-        })).map(course => this._manager.create(Course, course));
-        await this._manager.save(newCourses);
+        await this._userInitValidation();
+        const existingCourses = await this._manager.find(Course, {
+            where: courses.map(course => ({
+                code: course.courseNo,
+                lecSection: course.section.lec,
+                labSection: course.section.lab
+            }))
+        });
+        const existingCoursesSet = new Set(existingCourses.map(course => course.code +  course.lecSection + course.labSection));
+        let newCourses = this._manager.create(Course, 
+            courses.filter(course => !existingCoursesSet.has(course.courseNo + course.section.lec + course.section.lab))
+            .map(({courseNo, section, title, schedule}) => ({
+                code: courseNo,
+                lecSection: section.lec,
+                labSection: section.lab,
+                title: title,
+                scheduleDays: schedule.days,
+                scheduleStart: schedule.start,
+                scheduleEnd: schedule.end,
+                midtermExamStart: schedule.midterm?.start,
+                midtermExamEnd: schedule.midterm?.end,
+                finalExamStart: schedule.final?.start,
+                finalExamEnd: schedule.final?.end,
+                roster: []
+            }))
+        );
+        newCourses = await this._manager.save(newCourses);
+        this._user.instance.courses = [...existingCourses, ...newCourses];
+        await this._manager.save(this._user.instance);
     }
 
     public async updateSession(cred: LoginInfo) {
-        this._userInitValidation();
+        await this._userInitValidation();
         let session = await this._manager.findOneBy(Session, { owner: this._user.instance }).catch(this._rollbackIfException);
         if (!session) {
             session = this._manager.create(Session, {
@@ -110,9 +105,7 @@ export class UserTransaction {
         }
         await this._qRnr.commitTransaction();
         return {
-            id: this._user.instance.id,
-            username: this._user.username,
-            password: this._user.password
+            id: this._user.instance.id
         }
     }
 }

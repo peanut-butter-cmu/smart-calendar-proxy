@@ -1,3 +1,4 @@
+import { RegCMUFetcher } from "@/fetcher/reg-cmu.js";
 import { createOAuthPayload } from "@/helpers/reg-cmu.js";
 
 jest.setTimeout(30 * 60 * 1000); // Only limit the time out to 30 seconds.
@@ -42,6 +43,19 @@ describe("testing createREGPayload", () => {
             chkbxKeepmesignin: "on",
             btnLogin_submit: "Sign in",
             __ASYNCPOST: "true"
+        });
+    });
+});
+
+const testUsers: {username: string, password: string}[] = JSON.parse(process.env.TEST_CMU_USERS);
+describe("test REGFetcher", () => {
+    describe("testing on working user", () => {
+        const fetcher = new RegCMUFetcher(testUsers[0]);
+        test("testing validate credential", async () => {
+            expect(await fetcher.validate()).toBe(true);
+        });
+        test("get courses of single user", async () => {
+            expect(await fetcher.getCourses());
         });
     });
 });

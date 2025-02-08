@@ -17,5 +17,6 @@ module.exports = {
     moduleNameMapper: {
         "^@/(.*).js$": "<rootDir>/src/$1",
         "^(\\.{1,2}/.*)\\.js$": "$1"
-    }
+    },
+    modulePathIgnorePatterns: ["<rootDir>/dist/"]
 };
