@@ -2,7 +2,7 @@ import { CourseInfo } from "../../fetcher/reg-cmu.js";
 import { eachDayOfInterval } from "date-fns";
 import { EntityManager, QueryRunner } from "typeorm";
 import { GroupTitle } from "../user/index.js";
-import { createStartEndInRegDate } from "../../helpers/calendar.js";
+import { createStartEndInRegDate, getDefaultColor } from "../../helpers/calendar.js";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
 
@@ -24,12 +24,14 @@ export class CalendarTransaction {
         const categoryGroups = Object.values(GroupTitle).map(title => ({ 
             title, 
             system: true, 
-            owner: { id: this._ownerId } 
+            owner: { id: this._ownerId },
+            color: getDefaultColor(title)
         }));
         const courseGroups = courses.map(course => ({
             title: course.title,
             system: true,
-            owner: { id: this._ownerId }
+            owner: { id: this._ownerId },
+            color: getDefaultColor(course.title)
         }));
         const courseGroupTitles = courseGroups.map(({title}) => title);
         const groups = this._manager.create(
