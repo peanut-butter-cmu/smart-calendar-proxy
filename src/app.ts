@@ -13,7 +13,7 @@ configDotenv({ path: ".env" });
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
-dayjs.tz.setDefault(process.env.APP_TIMEZONE);
+dayjs.tz.setDefault(process.env.TZ);
 
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
@@ -23,7 +23,7 @@ const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
 app.use(express.json());
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
-dataSource.initialize().then(initializedDS => {
+dataSource.initialize().then(async initializedDS => {
     app.use(createRouter(initializedDS));
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);

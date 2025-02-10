@@ -48,7 +48,7 @@ export class RegCMUFetcher {
             return true;
         } catch(e) {
             if (process.env.DEBUG)
-                console.debug(e.stack);
+                console.log(e.stack);
             return false;
         }
     }

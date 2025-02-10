@@ -6,8 +6,6 @@ import { bodySchema, bodySchemaEdit } from "./schema.js";
 
 export type JWTPayload = {
     id: number;
-    username: string;
-    password: string;
 }
 
 export function createCalendarRouter(calendarService: ICalendarService) {
