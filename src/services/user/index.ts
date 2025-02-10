@@ -3,7 +3,6 @@ import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
 import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
 import { User } from "../../models/user.entity.js";
-import { CalendarService } from "../calendar/index.js";
 import { CalendarTransaction } from "../calendar/transaction.js";
 
 export enum GroupTitle {
