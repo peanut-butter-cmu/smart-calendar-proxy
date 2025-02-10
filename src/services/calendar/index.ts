@@ -1,6 +1,9 @@
 import { DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
+import { CalendarTransaction } from "./transaction.js";
+import { Session } from "../../models/session.entity.js";
+import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
 
 export type CalendarEventResp = Omit<CalendarEvent, "groups" | "created" | "modified"> & {
     groups: number[];
@@ -15,14 +18,17 @@ export interface ICalendarService {
     deleteEventById(ownerId: number, eventId: number): Promise<boolean>;
     getEventsByOwner(ownerId: number): Promise<CalendarEventResp[]>;
     getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]>;
+    syncEvents(ownerId: number): Promise<void>;
 }
 
 export class CalendarService implements ICalendarService {
     private _calendarEvent: Repository<CalendarEvent>;
     private _calendarEGroup: Repository<CalendarEventGroup>;
+    private _ds: DataSource;
     constructor(dataSource: DataSource) {
         this._calendarEvent = dataSource.getRepository(CalendarEvent);
         this._calendarEGroup = dataSource.getRepository(CalendarEventGroup);
+        this._ds = dataSource;
     }
     private static _transformResp(event: CalendarEvent): CalendarEventResp {
         return {
@@ -92,5 +98,22 @@ export class CalendarService implements ICalendarService {
     async getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]> {
         const groups = await this._calendarEGroup.findBy({ owner: { id: ownerId } });
         return groups.map(({ id, title }) => ({ id, title }));
+    }
+    async syncEvents(ownerId: number): Promise<void> {
+        const session = await this._ds.manager.findOneBy(Session, { owner: { id: ownerId } });
+        const reg = new RegCMUFetcher({ username: session.CMUUsername, password: session.CMUPassword });
+        const courses = await reg.getCourses();
+        const courseGroups = await this._ds.manager.findBy(CalendarEventGroup, { owner: { id: ownerId } });
+
+        const queryRunner = this._ds.createQueryRunner();
+        const calendarTrans = new CalendarTransaction(queryRunner, ownerId);
+        await calendarTrans.init();
+        await calendarTrans.cleanClassEvent();
+        await calendarTrans.cleanMidtermExamEvent();
+        await calendarTrans.cleanFinalExamEvent();
+        await calendarTrans.generateClassEvent(courses, courseGroups);
+        await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
+        await calendarTrans.generateFinalExamEvent(courses, courseGroups);
+        await calendarTrans.finalize();
     }
 }

@@ -2,7 +2,7 @@ import { CourseInfo } from "../../fetcher/reg-cmu.js";
 import { eachDayOfInterval } from "date-fns";
 import { EntityManager, QueryRunner } from "typeorm";
 import { GroupTitle } from "../user/index.js";
-import { createStartEndInRegDate, getDefaultColor } from "../../helpers/calendar.js";
+import { createStartEndInRegDate, getDefaultBusy, getDefaultColor, getDefaultPriority } from "../../helpers/calendar.js";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
 
@@ -25,13 +25,17 @@ export class CalendarTransaction {
             title, 
             system: true, 
             owner: { id: this._ownerId },
-            color: getDefaultColor(title)
+            color: getDefaultColor(title),
+            priority: getDefaultPriority(title),
+            isBusy: getDefaultBusy(title)
         }));
         const courseGroups = courses.map(course => ({
             title: course.title,
             system: true,
             owner: { id: this._ownerId },
-            color: getDefaultColor(course.title)
+            color: getDefaultColor(GroupTitle.CLASS),
+            priority: getDefaultPriority(GroupTitle.CLASS),
+            isBusy: getDefaultBusy(GroupTitle.CLASS)
         }));
         const courseGroupTitles = courseGroups.map(({title}) => title);
         const groups = this._manager.create(
@@ -97,6 +101,28 @@ export class CalendarTransaction {
 
     public async generateFinalExamEvent(courses: CourseInfo[], groups: CalendarEventGroup[]) {
         return this._generateExamEvent(GroupTitle.FINAL, courses, groups);
+    }
+
+    public async cleanMidtermExamEvent() {
+        const allMidtermEvents = await this._manager.find(CalendarEvent, {
+            where: {
+                groups: [{ title: GroupTitle.MIDTERM, system: true, owner: { id: this._ownerId } }],
+                owner: { id: this._ownerId }
+            }
+        });
+        const toRemove = allMidtermEvents.filter(({created, modified}) => created.getTime() === modified.getTime());
+        await this._manager.remove(toRemove);
+    }
+
+    public async cleanFinalExamEvent() {
+        const allFinalEvents = await this._manager.find(CalendarEvent, {
+            where: {
+                groups: [{ title: GroupTitle.FINAL, system: true, owner: { id: this._ownerId } }],
+                owner: { id: this._ownerId }
+            }
+        });
+        const toRemove = allFinalEvents.filter(({created, modified}) => created.getTime() === modified.getTime());
+        await this._manager.remove(toRemove);
     }
 
     public async cleanClassEvent() {

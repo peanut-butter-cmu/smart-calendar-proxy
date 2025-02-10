@@ -2,8 +2,9 @@ import { DataSource, QueryRunner } from "typeorm";
 import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
 import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
-import { CalendarTransaction } from "../calendar/transaction.js";
 import { User } from "../../models/user.entity.js";
+import { CalendarService } from "../calendar/index.js";
+import { CalendarTransaction } from "../calendar/transaction.js";
 
 export enum GroupTitle {
     CMU = "CMU",
@@ -60,16 +61,19 @@ export class UserService implements IUserService {
         await signUpTrans.initByStudentInfo(student);
         await signUpTrans.updateSession(cred);
         await signUpTrans.updateCourses(courses);
-        const payload = await signUpTrans.finalize();
-        const calendarTrans = new CalendarTransaction(queryRunner, payload.id);
+        const authToken = await signUpTrans.finalize();
+        if (!authToken)
+            return null;
+        const calendarTrans = new CalendarTransaction(queryRunner, authToken.id);
         await calendarTrans.init();
         const courseGroups = await calendarTrans.generateDefaultGroup(courses);
         await calendarTrans.generateClassEvent(courses, courseGroups);
         await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
         await calendarTrans.generateFinalExamEvent(courses, courseGroups);
         await calendarTrans.finalize();
-        return payload;
+        return authToken;
     }
+
     public async userInfo(userId: number): Promise<UserInfo | null> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
