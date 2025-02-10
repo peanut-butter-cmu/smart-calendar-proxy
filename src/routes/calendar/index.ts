@@ -109,6 +109,8 @@ export function createCalendarRouter(calendarService: ICalendarService) {
                 return;
             }
             const params = req.params as any;
+            if (req.body.groups)
+                req.body.groups = req.body.groups.map(groupID => ({ id: groupID, owner: { id: req.auth.id } }));
             const event = await calendarService.editEventById(req.auth.id, params.id, req.body);
             if (!event) {
                 res.sendStatus(404);

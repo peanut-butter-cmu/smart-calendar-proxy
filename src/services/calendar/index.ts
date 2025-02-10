@@ -70,11 +70,10 @@ export class CalendarService implements ICalendarService {
             where: { id: eventId, owner: { id: ownerId } },
             relations: ["groups"]
         });
-        if (!originalEvent)
-            return null;
         if (newEvent.groups) {
-            const uniqueGroups = [...new Set(newEvent.groups)];
-            newEvent.groups = await this._calendarEGroup.findBy(uniqueGroups.map(group => ({ ...group, owner: { id: ownerId } })));
+            newEvent.groups = await Promise.all(newEvent.groups.map(async group => this._calendarEGroup.findOneBy(group)));
+            if (newEvent.groups.some(group => group === null))
+                return null;
         }
         const modifiedEvent = await this._calendarEvent.save({...originalEvent, ...newEvent});
         return CalendarService._transformResp(modifiedEvent);
