@@ -9,7 +9,7 @@ export type CalendarEventResp = Omit<CalendarEvent, "groups" | "created" | "modi
     groups: number[];
 };
 
-export type EventGroupResp = Pick<CalendarEventGroup, "id" | "title">;
+export type EventGroupResp = Omit<CalendarEventGroup, "system" | "created" | "modified">;
 
 export interface ICalendarService {
     createEvent(ownerId: number, newEvent: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null>;
@@ -19,6 +19,8 @@ export interface ICalendarService {
     getEventsByOwner(ownerId: number): Promise<CalendarEventResp[]>;
     getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]>;
     syncEvents(ownerId: number): Promise<void>;
+    getGroupById(ownerId: number, groupId: number): Promise<EventGroupResp | null>;
+    editGroupById(ownerId: number, groupId: number, updatedGroup: Partial<CalendarEventGroup>): Promise<EventGroupResp | null>;
 }
 
 export class CalendarService implements ICalendarService {
@@ -30,7 +32,9 @@ export class CalendarService implements ICalendarService {
         this._calendarEGroup = dataSource.getRepository(CalendarEventGroup);
         this._ds = dataSource;
     }
-    private static _transformResp(event: CalendarEvent): CalendarEventResp {
+    private static _transformEventResp(event: CalendarEvent | null): CalendarEventResp | null {
+        if (!event)
+            return null;
         return {
             id: event.id,
             title: event.title,
@@ -38,6 +42,18 @@ export class CalendarService implements ICalendarService {
             start: event.start,
             end: event.end,
             owner: event.owner,
+        };
+    }
+    private static _transformGroupResp(group: CalendarEventGroup | null): EventGroupResp | null {
+        if (!group)
+            return null;
+        return {
+            id: group.id,
+            title: group.title,
+            owner: group.owner,
+            color: group.color,
+            priority: group.priority,
+            isBusy: group.isBusy
         };
     }
     async createEvent(userId: number, event: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null> {
@@ -53,7 +69,7 @@ export class CalendarService implements ICalendarService {
             owner: { id: userId },
             groups: [ownerGroup]
         });
-        return CalendarService._transformResp(await this._calendarEvent.save(newEvent));
+        return CalendarService._transformEventResp(await this._calendarEvent.save(newEvent));
     }
     async getEventById(ownerId: number, eventId: number): Promise<CalendarEventResp | null> {
         const event = await this._calendarEvent.findOne({ 
@@ -63,7 +79,7 @@ export class CalendarService implements ICalendarService {
         if (!event)
             return null;
         else
-            return CalendarService._transformResp(event);
+            return CalendarService._transformEventResp(event);
     }
     async editEventById(ownerId: number, eventId: number, newEvent: Partial<CalendarEvent>): Promise<CalendarEventResp | null> {
         const originalEvent = await this._calendarEvent.findOne({ 
@@ -76,7 +92,7 @@ export class CalendarService implements ICalendarService {
                 return null;
         }
         const modifiedEvent = await this._calendarEvent.save({...originalEvent, ...newEvent});
-        return CalendarService._transformResp(modifiedEvent);
+        return CalendarService._transformEventResp(modifiedEvent);
     }
     async deleteEventById(ownerId: number, eventId: number): Promise<boolean> {
         const findResult = await this._calendarEvent.findOneBy({ id: eventId, owner: { id: ownerId } });
@@ -92,11 +108,11 @@ export class CalendarService implements ICalendarService {
         });
         return events
             .map(({ id, title, start, end, groups }) => ({ id, title, start, end, groups })) // filter only needed keys
-            .map(CalendarService._transformResp); // map groups to extract only id
+            .map(CalendarService._transformEventResp); // map groups to extract only id
     }
     async getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]> {
         const groups = await this._calendarEGroup.findBy({ owner: { id: ownerId } });
-        return groups.map(({ id, title }) => ({ id, title }));
+        return groups.map(CalendarService._transformGroupResp);
     }
     async syncEvents(ownerId: number): Promise<void> {
         const session = await this._ds.manager.findOneBy(Session, { owner: { id: ownerId } });
@@ -114,5 +130,14 @@ export class CalendarService implements ICalendarService {
         await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
         await calendarTrans.generateFinalExamEvent(courses, courseGroups);
         await calendarTrans.finalize();
+    }
+    async getGroupById(ownerId: number, groupId: number): Promise<EventGroupResp | null> {
+        const group = await this._calendarEGroup.findOneBy({ id: groupId, owner: { id: ownerId } });
+        return CalendarService._transformGroupResp(group);
+    }
+    async editGroupById(ownerId: number, groupId: number, updatedGroup: Partial<CalendarEventGroup>): Promise<EventGroupResp | null> {
+        const originalGroup = await this._calendarEGroup.findOneBy({ id: groupId, owner: { id: ownerId } });
+        const modifiedGroup = await this._calendarEGroup.save({...originalGroup, ...updatedGroup});
+        return CalendarService._transformGroupResp(modifiedGroup);
     }
 }

@@ -1,6 +1,6 @@
 import { checkSchema } from "express-validator";
 
-export const bodySchema = checkSchema({
+const eventSchema = checkSchema({
     title: {
         in: "body",
         isString: true,
@@ -18,7 +18,7 @@ export const bodySchema = checkSchema({
     }
 });
 
-export const bodySchemaEdit = checkSchema({
+const eventEditSchema = checkSchema({
     title: {
         in: "body",
         optional: true,
@@ -44,6 +44,45 @@ export const bodySchemaEdit = checkSchema({
         custom: {
             options: (vals: any[]) => (vals.length >= 1 && vals.every(Number.isSafeInteger))
         }
+    },
+    "*": {
+        in: "body",
+        custom: {
+            options: (_, {path}) => {
+                return ["title", "start", "end", "groups"].includes(path)
+            }
+        }
     }
 });
 
+const groupEditSchema = checkSchema({
+    color: {
+        in: "body",
+        optional: true,
+        isRgbColor: true,
+    },
+    busy: {
+        in: "body",
+        optional: true,
+        isBoolean: true,
+    },
+    priority: {
+        in: "body",
+        optional: true,
+        isNumeric: true,
+        custom: {
+            options: (val: number) => val >= 1 && val <= 3
+        }
+    },
+    "*": {
+        in: "body",
+        custom: {
+            options: (_, {path}) => {
+                return ["color", "busy", "priority"].includes(path)
+            }
+        }
+    }
+});
+
+export { eventSchema, eventEditSchema };
+export { groupEditSchema };
