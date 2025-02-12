@@ -5,11 +5,11 @@ import { CalendarTransaction } from "./transaction.js";
 import { Session } from "../../models/session.entity.js";
 import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
 
-export type CalendarEventResp = Omit<CalendarEvent, "groups" | "created" | "modified"> & {
+export type CalendarEventResp = Omit<CalendarEvent, "owner" | "groups" | "created" | "modified"> & {
     groups: number[];
 };
 
-export type EventGroupResp = Omit<CalendarEventGroup, "system" | "created" | "modified">;
+export type EventGroupResp = Omit<CalendarEventGroup, "owner" | "system" | "created" | "modified">;
 
 export interface ICalendarService {
     createEvent(ownerId: number, newEvent: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null>;
@@ -41,7 +41,6 @@ export class CalendarService implements ICalendarService {
             groups: event.groups.map(({id}) => id),
             start: event.start,
             end: event.end,
-            owner: event.owner,
         };
     }
     private static _transformGroupResp(group: CalendarEventGroup | null): EventGroupResp | null {
@@ -50,10 +49,10 @@ export class CalendarService implements ICalendarService {
         return {
             id: group.id,
             title: group.title,
-            owner: group.owner,
             color: group.color,
             priority: group.priority,
-            isBusy: group.isBusy
+            isBusy: group.isBusy,
+            reminders: group.reminders
         };
     }
     async createEvent(userId: number, event: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null> {
@@ -87,7 +86,7 @@ export class CalendarService implements ICalendarService {
             relations: ["groups"]
         });
         if (newEvent.groups) {
-            newEvent.groups = await Promise.all(newEvent.groups.map(async group => this._calendarEGroup.findOneBy(group)));
+            newEvent.groups = await Promise.all(newEvent.groups.map(async ({ id, owner }) => this._calendarEGroup.findOneBy({ id, owner })));
             if (newEvent.groups.some(group => group === null))
                 return null;
         }

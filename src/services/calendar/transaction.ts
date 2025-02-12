@@ -2,7 +2,7 @@ import { CourseInfo } from "../../fetcher/reg-cmu.js";
 import { eachDayOfInterval } from "date-fns";
 import { EntityManager, QueryRunner } from "typeorm";
 import { GroupTitle } from "../user/index.js";
-import { createStartEndInRegDate, getDefaultBusy, getDefaultColor, getDefaultPriority } from "../../helpers/calendar.js";
+import { createStartEndInRegDate, getDefaultBusy, getDefaultColor, getDefaultPriority, getDefaultReminders } from "../../helpers/calendar.js";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
 
@@ -27,7 +27,8 @@ export class CalendarTransaction {
             owner: { id: this._ownerId },
             color: getDefaultColor(title),
             priority: getDefaultPriority(title),
-            isBusy: getDefaultBusy(title)
+            isBusy: getDefaultBusy(title),
+            reminders: getDefaultReminders(title),
         }));
         const courseGroups = courses.map(course => ({
             title: course.title,
@@ -35,7 +36,8 @@ export class CalendarTransaction {
             owner: { id: this._ownerId },
             color: getDefaultColor(GroupTitle.CLASS),
             priority: getDefaultPriority(GroupTitle.CLASS),
-            isBusy: getDefaultBusy(GroupTitle.CLASS)
+            isBusy: getDefaultBusy(GroupTitle.CLASS),
+            reminders: getDefaultReminders(GroupTitle.CLASS),
         }));
         const courseGroupTitles = courseGroups.map(({title}) => title);
         const groups = this._manager.create(

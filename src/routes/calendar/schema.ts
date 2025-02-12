@@ -1,3 +1,4 @@
+import { ReminderOptions } from "../../models/calendarEventGroup.entity.js";
 import { checkSchema } from "express-validator";
 
 const eventSchema = checkSchema({
@@ -49,7 +50,9 @@ const eventEditSchema = checkSchema({
         in: "body",
         custom: {
             options: (_, {path}) => {
-                return ["title", "start", "end", "groups"].includes(path)
+                if (!["title", "start", "end", "groups"].includes(path))
+                    throw new Error(`Additional field are not expected (${path}),`);
+                return true;
             }
         }
     }
@@ -74,11 +77,30 @@ const groupEditSchema = checkSchema({
             options: (val: number) => val >= 1 && val <= 3
         }
     },
+    reminders: {
+        in: "body",
+        optional: true,
+        custom: {
+            options: (vals: any) => {
+                if (!Array.isArray(vals))
+                    throw new Error("`reminders` must be array.");
+                if (!vals.every(Number.isSafeInteger))
+                    throw new Error("Each element in `reminders` must be number.");
+                if (!vals.every(num => Object.values(ReminderOptions).includes(num)))
+                    throw new Error("Custom time are not appliciable.");
+                if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
+                    throw new Error("Each element in `reminders` must be unique.");
+                return true;
+            }
+        }
+    },
     "*": {
         in: "body",
         custom: {
             options: (_, {path}) => {
-                return ["color", "busy", "priority"].includes(path)
+                if (!["color", "busy", "priority", "reminders"].includes(path))
+                    throw new Error(`Additional field are not expected (${path}).`);
+                return true;
             }
         }
     }

@@ -4,6 +4,8 @@ import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
 import { User } from "../../models/user.entity.js";
 import { CalendarTransaction } from "../calendar/transaction.js";
+import { MangoClient } from "../../client/mango.js";
+import { Session } from "../../models/session.entity.js";
 
 export enum GroupTitle {
     CMU = "CMU",
@@ -26,6 +28,7 @@ export type UserInfo = {
 export interface IUserService {
     auth(cred: LoginInfo): Promise<JWTPayload | null>;
     userInfo(userId: number): Promise<UserInfo | null>;
+    updateMangoToken(userId: number, token: string): Promise<boolean>;
 }
 
 export class UserService implements IUserService {
@@ -83,5 +86,17 @@ export class UserService implements IUserService {
             lastName: user.familyName,
             studentNo: user.studentNo
         }
+    }
+
+    public async updateMangoToken(userId: number, token: string): Promise<boolean> {
+        const session = await this._ds.manager.findOneBy(Session, { owner: { id: userId } });
+        if (!session)
+            return false;
+        const mango = new MangoClient(token);
+        if (!(await mango.validate()))
+            return false;
+        session.mangoToken = token;
+        const result = await this._ds.manager.save(session);
+        return result !== null;
     }
 }

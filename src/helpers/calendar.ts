@@ -74,3 +74,24 @@ export function getDefaultBusy(title: GroupTitle) {
             return true;
     }
 }
+
+export function getDefaultReminders(title: GroupTitle) {
+    switch(title) {
+        case GroupTitle.ASSIGNMENT:
+            return [0, 30];
+        case GroupTitle.CLASS:
+            return [15];
+        case GroupTitle.CMU:
+            return [];
+        case GroupTitle.FINAL:
+            return [30];
+        case GroupTitle.HOLIDAY:
+            return [];
+        case GroupTitle.MIDTERM:
+            return [30];
+        case GroupTitle.OWNER:
+            return [0];
+        case GroupTitle.QUIZ:
+            return [30];
+    }
+}
