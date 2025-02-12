@@ -61,7 +61,7 @@ const groupEditSchema = checkSchema({
         optional: true,
         isRgbColor: true,
     },
-    busy: {
+    isBusy: {
         in: "body",
         optional: true,
         isBoolean: true,
