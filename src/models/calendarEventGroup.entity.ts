@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany, Index, Check } from "typeorm";
+import { CalendarEvent } from "./calendarEvent.entity.js";
 import { User } from "./user.entity.js";
 
 export enum Priority {
@@ -25,24 +26,30 @@ export class CalendarEventGroup {
     @PrimaryGeneratedColumn()
     public id: number;
 
-    @Column()
+    @Column({ length: 255 })
+    @Index()
     public title: string;
 
-    @Column()
+    @Column({ default: false })
     public system: boolean;
 
-    @Column()
+    @Column({ length: 18, name: 'color' })
+    @Check(`"color" ~ '^rgb([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),\\s*([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),\\s*([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$'`)
     public color: string;
 
-    @Column()
+    @Column({ type: 'enum', enum: Priority })
     public priority: Priority;
 
-    @Column()
+    @Column({ default: false })
     public isBusy: boolean;
 
-    @Column("int", { array: true })
+    @Column("int", { array: true, default: [] })
     public reminders: ReminderOptions[];
 
-    @ManyToOne(() => User, (user) => user.eventsGroups)
+    @ManyToMany(() => CalendarEvent, event => event.groups)
+    public events: Relation<CalendarEvent[]>;
+
+    @ManyToOne(() => User, (user) => user.eventsGroups, { onDelete: 'CASCADE' })
+    @Index()
     public owner: Relation<User>;
 }

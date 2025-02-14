@@ -9,7 +9,7 @@ export type CalendarEventResp = Omit<CalendarEvent, "owner" | "groups" | "create
     groups: number[];
 };
 
-export type EventGroupResp = Omit<CalendarEventGroup, "owner" | "system" | "created" | "modified">;
+export type EventGroupResp = Omit<CalendarEventGroup, "owner" | "system" | "created" | "modified" | "events">;
 
 export interface ICalendarService {
     createEvent(ownerId: number, newEvent: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null>;

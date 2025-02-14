@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, Relation, Index } from "typeorm";
 import { CalendarEvent } from "./calendarEvent.entity.js";
 import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
 import { Course } from "./course.entity.js";
@@ -9,31 +9,34 @@ export class User {
     @PrimaryGeneratedColumn()
     public id: number;
 
-    @Column()
+    @Column({ length: 100 })
+    @Index()
     public givenName: string;
 
-    @Column()
+    @Column({ length: 100, nullable: true })
     public middleName: string;
 
-    @Column()
+    @Column({ length: 100 })
+    @Index()
     public familyName: string;
 
-    @Column({ unique: true })
+    @Column({ unique: true, type: 'bigint' })
+    @Index()
     public studentNo: number;
     
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     public created: Date;
 
-    @OneToMany(() => CalendarEvent, (evnt) => evnt.owner)
+    @OneToMany(() => CalendarEvent, (evnt) => evnt.owner, { cascade: true })
     public events: Relation<CalendarEvent[]>;
 
-    @OneToMany(() => CalendarEventGroup, (evntGroup) => evntGroup.owner)
+    @OneToMany(() => CalendarEventGroup, (evntGroup) => evntGroup.owner, { cascade: true })
     public eventsGroups: Relation<CalendarEventGroup[]>;
 
-    @ManyToMany(() => Course)
+    @ManyToMany(() => Course, { onDelete: 'CASCADE' })
     @JoinTable()
     public courses: Relation<Course[]>;
 
-    @OneToOne(() => Session)
+    @OneToOne(() => Session, { cascade: true })
     public session: Relation<Session>;
 }
