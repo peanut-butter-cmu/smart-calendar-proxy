@@ -23,11 +23,11 @@ export class Course {
     @Check(`"scheduleDays"::int[] <@ ARRAY[0,1,2,3,4,5,6]`)
     public scheduleDays: number[];
 
-    @Column("time")
+    @Column()
     public scheduleStart: number;
 
-    @Column("time")
-    @Check(`"scheduleEnd" > "scheduleStart"`)
+    @Column()
+    @Check(`"scheduleEnd" >= "scheduleStart"`)
     public scheduleEnd: number;
 
     @Column({ type: 'timestamp', nullable: true })

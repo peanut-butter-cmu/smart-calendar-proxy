@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany, Index, Check } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany, Index } from "typeorm";
 import { CalendarEvent } from "./calendarEvent.entity.js";
 import { User } from "./user.entity.js";
 
@@ -34,7 +34,6 @@ export class CalendarEventGroup {
     public system: boolean;
 
     @Column({ length: 18, name: 'color' })
-    @Check(`"color" ~ '^rgb([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),\\s*([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),\\s*([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$'`)
     public color: string;
 
     @Column({ type: 'enum', enum: Priority })
