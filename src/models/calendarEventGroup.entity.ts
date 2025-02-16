@@ -2,6 +2,11 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany
 import { CalendarEvent } from "./calendarEvent.entity.js";
 import { User } from "./user.entity.js";
 
+export enum EventGroupType {
+    SYSTEM = "system",
+    COURSE = "course"
+};
+
 export enum Priority {
     LOW = 1,
     MEDIUM = 2,
@@ -31,7 +36,10 @@ export class CalendarEventGroup {
     public title: string;
 
     @Column({ default: false })
-    public system: boolean;
+    public readonly: boolean;
+
+    @Column({ type: 'enum', enum: EventGroupType, default: EventGroupType.SYSTEM })
+    public type: EventGroupType;
 
     @Column({ length: 18, name: 'color' })
     public color: string;

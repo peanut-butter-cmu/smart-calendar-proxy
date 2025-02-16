@@ -1,15 +1,15 @@
 import { DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
-import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
+import { CalendarEventGroup, EventGroupType } from "../../models/calendarEventGroup.entity.js";
 import { CalendarTransaction } from "./transaction.js";
-import { Session } from "../../models/session.entity.js";
 import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
+import { User } from "../../models/user.entity.js";
 
 export type CalendarEventResp = Omit<CalendarEvent, "owner" | "groups" | "created" | "modified"> & {
     groups: number[];
 };
 
-export type EventGroupResp = Omit<CalendarEventGroup, "owner" | "system" | "created" | "modified" | "events">;
+export type EventGroupResp = Omit<CalendarEventGroup, "owner" | "readonly" | "created" | "modified" | "events">;
 
 export interface ICalendarService {
     createEvent(ownerId: number, newEvent: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null>;
@@ -49,6 +49,7 @@ export class CalendarService implements ICalendarService {
         return {
             id: group.id,
             title: group.title,
+            type: group.type,
             color: group.color,
             priority: group.priority,
             isBusy: group.isBusy,
@@ -58,7 +59,7 @@ export class CalendarService implements ICalendarService {
     async createEvent(userId: number, event: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null> {
         const ownerGroup = await this._calendarEGroup.findOneBy({ 
             title: "Owner", 
-            system: true, 
+            type: EventGroupType.SYSTEM, 
             owner: { id: userId }
         });
         if (!ownerGroup)
@@ -114,21 +115,26 @@ export class CalendarService implements ICalendarService {
         return groups.map(CalendarService._transformGroupResp);
     }
     async syncEvents(ownerId: number): Promise<void> {
-        const session = await this._ds.manager.findOneBy(Session, { owner: { id: ownerId } });
-        const reg = new RegCMUFetcher({ username: session.CMUUsername, password: session.CMUPassword });
+        const user = await this._ds.manager.findOneBy(User, { id: ownerId });
+        const reg = new RegCMUFetcher({ username: user.CMUUsername, password: user.CMUPassword });
         const courses = await reg.getCourses();
         const courseGroups = await this._ds.manager.findBy(CalendarEventGroup, { owner: { id: ownerId } });
 
         const queryRunner = this._ds.createQueryRunner();
-        const calendarTrans = new CalendarTransaction(queryRunner, ownerId);
-        await calendarTrans.init();
-        await calendarTrans.cleanClassEvent();
-        await calendarTrans.cleanMidtermExamEvent();
-        await calendarTrans.cleanFinalExamEvent();
-        await calendarTrans.generateClassEvent(courses, courseGroups);
-        await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
-        await calendarTrans.generateFinalExamEvent(courses, courseGroups);
-        await calendarTrans.finalize();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const calendarTrans = new CalendarTransaction(queryRunner, ownerId);
+            await calendarTrans.cleanClassEvent();
+            await calendarTrans.cleanMidtermExamEvent();
+            await calendarTrans.cleanFinalExamEvent();
+            await calendarTrans.generateClassEvent(courses, courseGroups);
+            await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
+            await calendarTrans.generateFinalExamEvent(courses, courseGroups);
+        } catch(error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
+        }
     }
     async getGroupById(ownerId: number, groupId: number): Promise<EventGroupResp | null> {
         const group = await this._calendarEGroup.findOneBy({ id: groupId, owner: { id: ownerId } });

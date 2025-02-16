@@ -3,7 +3,7 @@ import { expressjwt, Request as JWTRequest } from "express-jwt";
 import { JWTPayload } from "./index.js";
 import { ICalendarService } from "../../services/calendar/index.js";
 import { param, validationResult } from "express-validator";
-import { eventSchema, eventEditSchema } from "./schema.js";
+import { eventNewSchema, eventEditSchema } from "../schema/calendar.schema.js";
 
 export function createEventRoutes(calendarService: ICalendarService) {
     const router = Router();
@@ -53,7 +53,7 @@ export function createEventRoutes(calendarService: ICalendarService) {
             secret: process.env.APP_JWT_SECRET!, 
             algorithms: ["HS256"]
         }),
-        eventSchema,
+        eventNewSchema,
         async (req: JWTRequest<JWTPayload>, res: Response) => {
             const valResult = validationResult(req);
             if (!valResult.isEmpty()) {

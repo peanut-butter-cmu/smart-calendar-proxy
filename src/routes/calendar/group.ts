@@ -3,7 +3,7 @@ import { Router, Response } from "express";
 import { expressjwt, Request as JWTRequest } from "express-jwt";
 import { JWTPayload } from "./index.js";
 import { param, validationResult } from "express-validator";
-import { groupEditSchema } from "./schema.js";
+import { groupEditSchema } from "../schema/calendar.schema.js";
 
 export function createGroupRoutes(calendarService: ICalendarService) {
     const router = Router();

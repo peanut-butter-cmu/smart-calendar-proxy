@@ -1,0 +1,120 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class Migration1739722285167 implements MigrationInterface {
+    name = 'Migration1739722285167'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE TYPE "public"."calendar_event_group_type_enum" AS ENUM('system', 'course')`);
+        await queryRunner.query(`CREATE TYPE "public"."calendar_event_group_priority_enum" AS ENUM('1', '2', '3')`);
+        await queryRunner.query(`CREATE TABLE "calendar_event_group" ("id" SERIAL NOT NULL, "title" character varying(255) NOT NULL, "readonly" boolean NOT NULL DEFAULT false, "type" "public"."calendar_event_group_type_enum" NOT NULL DEFAULT 'system', "color" character varying(18) NOT NULL, "priority" "public"."calendar_event_group_priority_enum" NOT NULL, "isBusy" boolean NOT NULL DEFAULT false, "reminders" integer array NOT NULL DEFAULT '{}', "ownerId" integer, CONSTRAINT "PK_f3892f2fdede8ff45d4a94aaaf6" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_09a04655b97ab632fc6d379239" ON "calendar_event_group" ("title") `);
+        await queryRunner.query(`CREATE INDEX "IDX_232c7fb7b3a6e279416da634f4" ON "calendar_event_group" ("ownerId") `);
+        await queryRunner.query(`CREATE TABLE "calendar_event" ("id" SERIAL NOT NULL, "title" character varying(255) NOT NULL, "start" TIMESTAMP NOT NULL, "end" TIMESTAMP NOT NULL, "created" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "modified" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "ownerId" integer, CONSTRAINT "CHK_8582688c4d5d8fe4ded35392c8" CHECK ("end" > "start"), CONSTRAINT "PK_176fe24e6eb48c3fef696c7641f" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_caf4951f9a664ba624036e0f6a" ON "calendar_event" ("title") `);
+        await queryRunner.query(`CREATE INDEX "IDX_ddba6a0abecf11a9e26742326d" ON "calendar_event" ("start") `);
+        await queryRunner.query(`CREATE INDEX "IDX_5a7aa17a0c4d9a8fefdb3a7b1d" ON "calendar_event" ("end") `);
+        await queryRunner.query(`CREATE INDEX "IDX_a7ac80d698e18c0d5989d5d284" ON "calendar_event" ("ownerId") `);
+        await queryRunner.query(`CREATE TABLE "course" ("code" character varying(6) NOT NULL, "lecSection" character varying(3) NOT NULL, "labSection" character varying(3) NOT NULL, "title" character varying(255) NOT NULL, "scheduleDays" integer array NOT NULL, "scheduleStart" integer NOT NULL, "scheduleEnd" integer NOT NULL, "midtermExamStart" TIMESTAMP, "midtermExamEnd" TIMESTAMP, "finalExamStart" TIMESTAMP, "finalExamEnd" TIMESTAMP, "created" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "modified" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, CONSTRAINT "CHK_6b4120f1c752bbd621f05affc7" CHECK ("scheduleDays"::int[] <@ ARRAY[0,1,2,3,4,5,6]), CONSTRAINT "CHK_2f513f0b52d4cea76a428bab97" CHECK ("scheduleEnd" >= "scheduleStart"), CONSTRAINT "CHK_3352f50640b17905446cdc9a4b" CHECK ("midtermExamEnd" > "midtermExamStart" OR ("midtermExamEnd" IS NULL AND "midtermExamStart" IS NULL)), CONSTRAINT "CHK_7d9d475721ab8532a37c867917" CHECK ("finalExamEnd" > "finalExamStart" OR ("finalExamEnd" IS NULL AND "finalExamStart" IS NULL)), CONSTRAINT "PK_8f787d99e7f8560b6c6ab922664" PRIMARY KEY ("code", "lecSection", "labSection"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_5cf4963ae12285cda6432d5a3a" ON "course" ("code") `);
+        await queryRunner.query(`CREATE TABLE "session" ("id" SERIAL NOT NULL, "fcmToken" character varying NOT NULL, "created" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "modified" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "ownerId" integer, CONSTRAINT "PK_f55da76ac1c3ac420f444d2ff11" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TYPE "public"."notification_type_enum" AS ENUM('group_invite', 'invite_accepted', 'invite_rejected', 'member_added', 'member_removed', 'meeting_scheduled', 'event_deleted')`);
+        await queryRunner.query(`CREATE TYPE "public"."notification_deliverytype_enum" AS ENUM('in_app', 'email_registered', 'email_unregistered', 'fcm')`);
+        await queryRunner.query(`CREATE TYPE "public"."notification_status_enum" AS ENUM('pending', 'sent', 'failed')`);
+        await queryRunner.query(`CREATE TABLE "notification" ("id" SERIAL NOT NULL, "type" "public"."notification_type_enum" NOT NULL, "data" jsonb NOT NULL, "deliveryType" "public"."notification_deliverytype_enum" NOT NULL DEFAULT 'in_app', "scheduledFor" TIMESTAMP, "status" "public"."notification_status_enum" NOT NULL DEFAULT 'pending', "retryCount" integer NOT NULL DEFAULT '0', "deliveryMetadata" jsonb, "read" boolean NOT NULL DEFAULT false, "createdAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "updatedAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "userId" integer, CONSTRAINT "PK_705b6c7cdf9b2c2ff7ac7872cb7" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_1ced25315eb974b73391fb1c81" ON "notification" ("userId") `);
+        await queryRunner.query(`CREATE TABLE "user" ("id" SERIAL NOT NULL, "givenName" character varying(100) NOT NULL, "middleName" character varying(100), "familyName" character varying(100) NOT NULL, "studentNo" bigint NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "updatedAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "CMUUsername" character varying NOT NULL, "CMUPassword" character varying NOT NULL, "mangoToken" character varying NOT NULL, CONSTRAINT "UQ_88b93f60baa5df3e6a89d8ee0d4" UNIQUE ("studentNo"), CONSTRAINT "PK_cace4a159ff9f2512dd42373760" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_e467bf43fc969a88e9eebb29e1" ON "user" ("givenName") `);
+        await queryRunner.query(`CREATE INDEX "IDX_72aa0a9b34cd8c5a9390ee94f1" ON "user" ("familyName") `);
+        await queryRunner.query(`CREATE INDEX "IDX_88b93f60baa5df3e6a89d8ee0d" ON "user" ("studentNo") `);
+        await queryRunner.query(`CREATE TYPE "public"."shared_event_invite_status_enum" AS ENUM('pending', 'accepted', 'rejected')`);
+        await queryRunner.query(`CREATE TABLE "shared_event_invite" ("id" SERIAL NOT NULL, "email" character varying NOT NULL, "status" "public"."shared_event_invite_status_enum" NOT NULL DEFAULT 'pending', "createdAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "updatedAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "eventId" integer, CONSTRAINT "PK_eb812863e50d2b283db0fe262ef" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_4cf00f2b7429021ed9c9ce272b" ON "shared_event_invite" ("email") `);
+        await queryRunner.query(`CREATE TABLE "shared_event" ("id" SERIAL NOT NULL, "title" character varying(255) NOT NULL, "reminders" integer array NOT NULL DEFAULT '{}', "idealDays" integer array NOT NULL, "idealTimeRange" jsonb NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "updatedAt" TIMESTAMP NOT NULL DEFAULT ('now'::text)::timestamp(6) with time zone, "ownerId" integer, CONSTRAINT "PK_c731bddb73a9b8258d7d23492dc" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_02832375a0cc22d83728288b4e" ON "shared_event" ("title") `);
+        await queryRunner.query(`CREATE INDEX "IDX_02187c88a379e7cda0b44bc6d5" ON "shared_event" ("ownerId") `);
+        await queryRunner.query(`CREATE TABLE "calendar_event_groups_calendar_event_group" ("calendarEventId" integer NOT NULL, "calendarEventGroupId" integer NOT NULL, CONSTRAINT "PK_e7958a0bda75eea53fe8eb96e64" PRIMARY KEY ("calendarEventId", "calendarEventGroupId"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_cf39e0cde1bbcb4e88e7dd383b" ON "calendar_event_groups_calendar_event_group" ("calendarEventId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_d6b134200cbcd612e0ee1955ba" ON "calendar_event_groups_calendar_event_group" ("calendarEventGroupId") `);
+        await queryRunner.query(`CREATE TABLE "user_courses_course" ("userId" integer NOT NULL, "courseCode" character varying(6) NOT NULL, "courseLecSection" character varying(3) NOT NULL, "courseLabSection" character varying(3) NOT NULL, CONSTRAINT "PK_8e20280702fb880969487f04a82" PRIMARY KEY ("userId", "courseCode", "courseLecSection", "courseLabSection"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_e99d8f99eff1a45a772b11060e" ON "user_courses_course" ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_29960e217ad85aadd93f31908f" ON "user_courses_course" ("courseCode", "courseLecSection", "courseLabSection") `);
+        await queryRunner.query(`CREATE TABLE "shared_event_members_user" ("sharedEventId" integer NOT NULL, "userId" integer NOT NULL, CONSTRAINT "PK_1252ddb1a4bc1c5d9e987267d02" PRIMARY KEY ("sharedEventId", "userId"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_2f97a8acbe3081f48712ac7efa" ON "shared_event_members_user" ("sharedEventId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_81054a9a7206a9c4304556f02c" ON "shared_event_members_user" ("userId") `);
+        await queryRunner.query(`CREATE TABLE "shared_event_events_calendar_event" ("sharedEventId" integer NOT NULL, "calendarEventId" integer NOT NULL, CONSTRAINT "PK_d6173a4c69b113125467899d1a0" PRIMARY KEY ("sharedEventId", "calendarEventId"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_7c36a159b915861e80c4f6ea4b" ON "shared_event_events_calendar_event" ("sharedEventId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_59d507f7b5e52e541ca2613e0f" ON "shared_event_events_calendar_event" ("calendarEventId") `);
+        await queryRunner.query(`ALTER TABLE "calendar_event_group" ADD CONSTRAINT "FK_232c7fb7b3a6e279416da634f46" FOREIGN KEY ("ownerId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "calendar_event" ADD CONSTRAINT "FK_a7ac80d698e18c0d5989d5d2847" FOREIGN KEY ("ownerId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "session" ADD CONSTRAINT "FK_e1dde0bd0402cc9b1967c40a1b3" FOREIGN KEY ("ownerId") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "notification" ADD CONSTRAINT "FK_1ced25315eb974b73391fb1c81b" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "shared_event_invite" ADD CONSTRAINT "FK_d85a910e35b56b64a3555590af0" FOREIGN KEY ("eventId") REFERENCES "shared_event"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "shared_event" ADD CONSTRAINT "FK_02187c88a379e7cda0b44bc6d55" FOREIGN KEY ("ownerId") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "calendar_event_groups_calendar_event_group" ADD CONSTRAINT "FK_cf39e0cde1bbcb4e88e7dd383bd" FOREIGN KEY ("calendarEventId") REFERENCES "calendar_event"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+        await queryRunner.query(`ALTER TABLE "calendar_event_groups_calendar_event_group" ADD CONSTRAINT "FK_d6b134200cbcd612e0ee1955ba3" FOREIGN KEY ("calendarEventGroupId") REFERENCES "calendar_event_group"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "user_courses_course" ADD CONSTRAINT "FK_e99d8f99eff1a45a772b11060e5" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+        await queryRunner.query(`ALTER TABLE "user_courses_course" ADD CONSTRAINT "FK_29960e217ad85aadd93f31908fc" FOREIGN KEY ("courseCode", "courseLecSection", "courseLabSection") REFERENCES "course"("code","lecSection","labSection") ON DELETE CASCADE ON UPDATE CASCADE`);
+        await queryRunner.query(`ALTER TABLE "shared_event_members_user" ADD CONSTRAINT "FK_2f97a8acbe3081f48712ac7efa9" FOREIGN KEY ("sharedEventId") REFERENCES "shared_event"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+        await queryRunner.query(`ALTER TABLE "shared_event_members_user" ADD CONSTRAINT "FK_81054a9a7206a9c4304556f02c4" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+        await queryRunner.query(`ALTER TABLE "shared_event_events_calendar_event" ADD CONSTRAINT "FK_7c36a159b915861e80c4f6ea4bc" FOREIGN KEY ("sharedEventId") REFERENCES "shared_event"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+        await queryRunner.query(`ALTER TABLE "shared_event_events_calendar_event" ADD CONSTRAINT "FK_59d507f7b5e52e541ca2613e0f8" FOREIGN KEY ("calendarEventId") REFERENCES "calendar_event"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "shared_event_events_calendar_event" DROP CONSTRAINT "FK_59d507f7b5e52e541ca2613e0f8"`);
+        await queryRunner.query(`ALTER TABLE "shared_event_events_calendar_event" DROP CONSTRAINT "FK_7c36a159b915861e80c4f6ea4bc"`);
+        await queryRunner.query(`ALTER TABLE "shared_event_members_user" DROP CONSTRAINT "FK_81054a9a7206a9c4304556f02c4"`);
+        await queryRunner.query(`ALTER TABLE "shared_event_members_user" DROP CONSTRAINT "FK_2f97a8acbe3081f48712ac7efa9"`);
+        await queryRunner.query(`ALTER TABLE "user_courses_course" DROP CONSTRAINT "FK_29960e217ad85aadd93f31908fc"`);
+        await queryRunner.query(`ALTER TABLE "user_courses_course" DROP CONSTRAINT "FK_e99d8f99eff1a45a772b11060e5"`);
+        await queryRunner.query(`ALTER TABLE "calendar_event_groups_calendar_event_group" DROP CONSTRAINT "FK_d6b134200cbcd612e0ee1955ba3"`);
+        await queryRunner.query(`ALTER TABLE "calendar_event_groups_calendar_event_group" DROP CONSTRAINT "FK_cf39e0cde1bbcb4e88e7dd383bd"`);
+        await queryRunner.query(`ALTER TABLE "shared_event" DROP CONSTRAINT "FK_02187c88a379e7cda0b44bc6d55"`);
+        await queryRunner.query(`ALTER TABLE "shared_event_invite" DROP CONSTRAINT "FK_d85a910e35b56b64a3555590af0"`);
+        await queryRunner.query(`ALTER TABLE "notification" DROP CONSTRAINT "FK_1ced25315eb974b73391fb1c81b"`);
+        await queryRunner.query(`ALTER TABLE "session" DROP CONSTRAINT "FK_e1dde0bd0402cc9b1967c40a1b3"`);
+        await queryRunner.query(`ALTER TABLE "calendar_event" DROP CONSTRAINT "FK_a7ac80d698e18c0d5989d5d2847"`);
+        await queryRunner.query(`ALTER TABLE "calendar_event_group" DROP CONSTRAINT "FK_232c7fb7b3a6e279416da634f46"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_59d507f7b5e52e541ca2613e0f"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_7c36a159b915861e80c4f6ea4b"`);
+        await queryRunner.query(`DROP TABLE "shared_event_events_calendar_event"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_81054a9a7206a9c4304556f02c"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_2f97a8acbe3081f48712ac7efa"`);
+        await queryRunner.query(`DROP TABLE "shared_event_members_user"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_29960e217ad85aadd93f31908f"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_e99d8f99eff1a45a772b11060e"`);
+        await queryRunner.query(`DROP TABLE "user_courses_course"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_d6b134200cbcd612e0ee1955ba"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_cf39e0cde1bbcb4e88e7dd383b"`);
+        await queryRunner.query(`DROP TABLE "calendar_event_groups_calendar_event_group"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_02187c88a379e7cda0b44bc6d5"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_02832375a0cc22d83728288b4e"`);
+        await queryRunner.query(`DROP TABLE "shared_event"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_4cf00f2b7429021ed9c9ce272b"`);
+        await queryRunner.query(`DROP TABLE "shared_event_invite"`);
+        await queryRunner.query(`DROP TYPE "public"."shared_event_invite_status_enum"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_88b93f60baa5df3e6a89d8ee0d"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_72aa0a9b34cd8c5a9390ee94f1"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_e467bf43fc969a88e9eebb29e1"`);
+        await queryRunner.query(`DROP TABLE "user"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_1ced25315eb974b73391fb1c81"`);
+        await queryRunner.query(`DROP TABLE "notification"`);
+        await queryRunner.query(`DROP TYPE "public"."notification_status_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."notification_deliverytype_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."notification_type_enum"`);
+        await queryRunner.query(`DROP TABLE "session"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_5cf4963ae12285cda6432d5a3a"`);
+        await queryRunner.query(`DROP TABLE "course"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_a7ac80d698e18c0d5989d5d284"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_5a7aa17a0c4d9a8fefdb3a7b1d"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_ddba6a0abecf11a9e26742326d"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_caf4951f9a664ba624036e0f6a"`);
+        await queryRunner.query(`DROP TABLE "calendar_event"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_232c7fb7b3a6e279416da634f4"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_09a04655b97ab632fc6d379239"`);
+        await queryRunner.query(`DROP TABLE "calendar_event_group"`);
+        await queryRunner.query(`DROP TYPE "public"."calendar_event_group_priority_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."calendar_event_group_type_enum"`);
+    }
+
+}

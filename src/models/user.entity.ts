@@ -1,10 +1,10 @@
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, Relation, Index, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn, Relation, Index, UpdateDateColumn, BeforeInsert, BeforeUpdate } from "typeorm";
 import { CalendarEvent } from "./calendarEvent.entity.js";
 import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
 import { Course } from "./course.entity.js";
 import { Session } from "./session.entity.js";
-import { SharedEventGroup } from "./sharedEventGroup.entity.js";
 import { Notification } from "./notification.entity.js";
+import * as crypto from 'crypto';
 
 @Entity()
 export class User {
@@ -42,14 +42,47 @@ export class User {
     @JoinTable()
     public courses: Relation<Course[]>;
 
-    @OneToOne(() => Session, { cascade: true })
-    public session: Relation<Session>;
+    @OneToMany(() => Session, (session) => session.owner, { cascade: true })
+    public sessions: Relation<Session[]>;
 
-    @OneToMany(() => SharedEventGroup, (group) => group.owner, { cascade: true })
-    public sharedGroups: Relation<SharedEventGroup[]>;
+    @Column({ select: false })
+    public CMUUsername: string;
 
-    @ManyToMany(() => SharedEventGroup, (group) => group.members)
-    public memberOfGroups: Relation<SharedEventGroup[]>;
+    @Column({ select: false })
+    public CMUPassword: string;
+
+    @Column({ select: false })
+    public mangoToken: string;
+
+    @BeforeInsert()
+    @BeforeUpdate()
+    encryptSensitiveData() {
+        if (this.CMUUsername)
+            this.CMUUsername = this._encrypt(this.CMUUsername);
+        if (this.CMUPassword)
+            this.CMUPassword = this._encrypt(this.CMUPassword);
+        if (this.mangoToken)
+            this.mangoToken = this._encrypt(this.mangoToken);
+    }
+
+    private _encrypt(text: string): string {
+        const key = process.env.APP_ENCRYPTION_KEY || 'default-key-change-in-production';
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key), iv);
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        return `${iv.toString('hex')}:${encrypted}`;
+    }
+
+    public decrypt(encryptedText: string): string {
+        const key = process.env.APP_ENCRYPTION_KEY || 'default-key-change-in-production';
+        const [ivHex, encrypted] = encryptedText.split(':');
+        const iv = Buffer.from(ivHex, 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key), iv);
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    }
 
     @OneToMany(() => Notification, (notification) => notification.user, { cascade: true })
     public notifications: Relation<Notification[]>;

@@ -10,17 +10,23 @@ export function createUserRouter(userService: IUserService) {
     router.post("/user/auth", 
         body("username").notEmpty().withMessage("`username` must not be empty."),
         body("password").notEmpty().withMessage("`password` must not be empty."),
-        async (req, res) => { 
-            const result = validationResult(req);
-            if (!result.isEmpty()) {
-                res.send(result.array());
+        async (req, res) => {
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
-            const authResult = await userService.auth(req.body);
-            if (!authResult)
-                res.sendStatus(401);
-            else
-                res.send(jwt.sign(authResult, process.env.APP_JWT_SECRET));
+            try {
+                const jwtPayload = await userService.auth(req.body);
+                res.send(jwt.sign(jwtPayload, process.env.APP_JWT_SECRET));
+            } catch (error) {
+                const msg = (error as Error).message;
+                if (msg === "Unable to sign in.")
+                    res.status(401);
+                else
+                    res.status(400);
+                res.send({ message: msg });
+            }
         }
     );
     router.get("/user/me",

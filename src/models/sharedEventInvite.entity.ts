@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
-import { SharedEventGroup } from "./sharedEventGroup.entity.js";
+import { SharedEvent } from "./sharedEvent.entity.js";
 
 export enum InviteStatus {
     PENDING = 'pending',
@@ -8,27 +8,19 @@ export enum InviteStatus {
 }
 
 @Entity()
-export class SharedGroupInvite {
+export class SharedEventInvite {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => SharedEventGroup, group => group.invites)
-    group: Relation<SharedEventGroup>;
+    @ManyToOne(() => SharedEvent, event => event.invites)
+    event: Relation<SharedEvent>;
 
     @Column()
     @Index()
     email: string;
 
-    @Column({
-        type: 'enum',
-        enum: InviteStatus,
-        default: InviteStatus.PENDING
-    })
+    @Column({ type: 'enum', enum: InviteStatus, default: InviteStatus.PENDING })
     status: InviteStatus;
-
-    @Column({ type: 'uuid', generated: 'uuid' })
-    @Index()
-    token: string;
 
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     createdAt: Date;
