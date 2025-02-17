@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity.js";
 
 @Entity()
@@ -7,13 +7,7 @@ export class Session {
     public id: string;
 
     @Column()
-    public CMUUsername: string;
-
-    @Column()
-    public CMUPassword: string;
-
-    @Column()
-    public mangoToken: string;
+    public fcmToken: string;
     
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     public created: Date;
@@ -21,7 +15,7 @@ export class Session {
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
     public modified: Date;
 
-    @OneToOne(() => User)
+    @ManyToOne(() => User, (user) => user.sessions)
     @JoinColumn()
     public owner: Relation<User>
 }

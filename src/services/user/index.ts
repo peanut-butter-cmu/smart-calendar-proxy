@@ -1,9 +1,10 @@
 import { DataSource, QueryRunner } from "typeorm";
-import { RegCMUFetcher } from "../../fetcher/reg-cmu.js";
+import { RegCMUFetcher, StudentInfo } from "../../fetcher/reg-cmu.js";
 import { JWTPayload } from "../../routes/calendar/index.js";
 import { UserTransaction } from "./transaction.js";
-import { CalendarTransaction } from "../calendar/transaction.js";
 import { User } from "../../models/user.entity.js";
+import { CalendarTransaction } from "../calendar/transaction.js";
+import { MangoClient } from "../../client/mango.js";
 
 export enum GroupTitle {
     CMU = "CMU",
@@ -26,6 +27,7 @@ export type UserInfo = {
 export interface IUserService {
     auth(cred: LoginInfo): Promise<JWTPayload | null>;
     userInfo(userId: number): Promise<UserInfo | null>;
+    updateMangoToken(userId: number, token: string): Promise<boolean>;
 }
 
 export class UserService implements IUserService {
@@ -33,43 +35,58 @@ export class UserService implements IUserService {
     constructor(dataSource: DataSource) {
         this._ds = dataSource;
     }
-    public async auth(cred: LoginInfo): Promise<JWTPayload | null> {
-        const reg = new RegCMUFetcher(cred);
+
+    private async _isStudentExist(
+        studentNo: number
+    ): Promise<boolean> {
+        const student = await this._ds.manager.findOneBy(User, { studentNo });
+        return student !== null;
+    }
+
+    public async auth(cred: LoginInfo): Promise<JWTPayload> {
         const queryRunner = this._ds.createQueryRunner();
         await queryRunner.connect();
+        await queryRunner.startTransaction();
         try {
-            return await UserService._signIn(reg, queryRunner) || await UserService._signUp(reg, queryRunner, cred);
-        } catch(err) {
-            if (process.env.DEBUG)
-                console.log(err.stack);
-            console.error(`cred = ${JSON.stringify(cred)}, error = ${err}}`);
-            return null;
+            const reg = new RegCMUFetcher(cred);
+            const student = await reg.getStudent();
+            const userPromise = (await this._isStudentExist(student.studentNo)) ?
+                UserService._signIn(queryRunner, student) : 
+                UserService._signUp(reg, queryRunner, cred, student);
+            const user = await userPromise;
+            await queryRunner.commitTransaction();
+            return user;
+        } catch(error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
         }
     }
 
-    private static async _signIn(reg: RegCMUFetcher, queryRunner: QueryRunner): Promise<JWTPayload | null> {
-        const { studentNo } = await reg.getStudent();
-        const signInTrans = new UserTransaction("SignIn", queryRunner);
+    private static async _signIn(queryRunner: QueryRunner, { studentNo }: StudentInfo): Promise<JWTPayload> {
+        const signInTrans = new UserTransaction("sign in", queryRunner);
         await signInTrans.initByStudentNo(studentNo);
         return signInTrans.finalize();
     }
 
-    private static async _signUp(reg: RegCMUFetcher, queryRunner: QueryRunner, cred: LoginInfo): Promise<JWTPayload | null> {
-        const [ student, courses ] = await Promise.all([reg.getStudent(), reg.getCourses()]);
-        const signUpTrans = new UserTransaction("SignUp", queryRunner);
-        await signUpTrans.initByStudentInfo(student);
-        await signUpTrans.updateSession(cred);
+    private static async _signUp(
+        reg: RegCMUFetcher, 
+        queryRunner: QueryRunner, 
+        cred: LoginInfo,
+        student: StudentInfo
+    ): Promise<JWTPayload> {
+        const courses = await reg.getCourses();
+        const signUpTrans = new UserTransaction("sign up", queryRunner);
+        await signUpTrans.initByStudentInfo(student, cred);
         await signUpTrans.updateCourses(courses);
-        const payload = await signUpTrans.finalize();
-        const calendarTrans = new CalendarTransaction(queryRunner, payload.id);
-        await calendarTrans.init();
+        const authToken = await signUpTrans.finalize();
+        const calendarTrans = new CalendarTransaction(queryRunner, authToken.id);
         const courseGroups = await calendarTrans.generateDefaultGroup(courses);
         await calendarTrans.generateClassEvent(courses, courseGroups);
         await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
         await calendarTrans.generateFinalExamEvent(courses, courseGroups);
-        await calendarTrans.finalize();
-        return payload;
+        return authToken;
     }
+
     public async userInfo(userId: number): Promise<UserInfo | null> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
@@ -80,5 +97,17 @@ export class UserService implements IUserService {
             lastName: user.familyName,
             studentNo: user.studentNo
         }
+    }
+
+    public async updateMangoToken(userId: number, token: string): Promise<boolean> {
+        const user = await this._ds.manager.findOneBy(User, { id: userId });
+        if (!user)
+            return false;
+        const mango = new MangoClient(token);
+        if (!(await mango.validate()))
+            return false;
+        user.mangoToken = token;
+        const result = await this._ds.manager.save(user);
+        return result !== null;
     }
 }

@@ -107,7 +107,8 @@ export function createCMUAxios() {
     const jar = new CookieJar();
     return wrapper(axios.create({
         headers: { "User-Agent": process.env.REG_CLIENT_UAGENT },
-        jar
+        jar,
+        timeout: 2000
     }));
 }
 

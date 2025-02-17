@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn, Check, Index } from "typeorm";
 import { User } from "./user.entity.js";
 import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
 
@@ -7,13 +7,17 @@ export class CalendarEvent {
     @PrimaryGeneratedColumn()
     public id: number;
 
-    @Column()
+    @Column({ length: 255 })
+    @Index()
     public title: string;
 
-    @Column()
+    @Column({ type: 'timestamp' })
+    @Index()
     public start: Date;
 
-    @Column()
+    @Column({ type: 'timestamp' })
+    @Check(`"end" > "start"`)
+    @Index()
     public end: Date;
 
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
@@ -22,10 +26,11 @@ export class CalendarEvent {
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
     public modified: Date;
 
-    @ManyToMany(() => CalendarEventGroup)
+    @ManyToMany(() => CalendarEventGroup, group => group.events, { onDelete: 'CASCADE' })
     @JoinTable()
     public groups: Relation<CalendarEventGroup[]>;
 
-    @ManyToOne(() => User, user => user.events)
+    @ManyToOne(() => User, user => user.events, { onDelete: 'CASCADE' })
+    @Index()
     public owner: Relation<User>
 }

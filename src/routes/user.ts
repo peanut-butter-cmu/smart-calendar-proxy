@@ -1,26 +1,32 @@
 import { IUserService } from "../services/user/index.js";
 import { Router } from "express";
 import { expressjwt, Request as JWTRequest } from "express-jwt";
-import { body, validationResult } from "express-validator";
+import { body, query, validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { JWTPayload } from "./calendar/index.js";
 
 export function createUserRouter(userService: IUserService) {
     const router = Router();
     router.post("/user/auth", 
-        body("username").notEmpty(),
-        body("password").notEmpty(),
-        async (req, res) => { 
-            const result = validationResult(req);
-            if (!result.isEmpty()) {
-                res.send(result.array());
+        body("username").notEmpty().withMessage("`username` must not be empty."),
+        body("password").notEmpty().withMessage("`password` must not be empty."),
+        async (req, res) => {
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
-            const authResult = await userService.auth(req.body);
-            if (!authResult)
-                res.sendStatus(401);
-            else
-                res.send(jwt.sign(authResult, process.env.APP_JWT_SECRET));
+            try {
+                const jwtPayload = await userService.auth(req.body);
+                res.send(jwt.sign(jwtPayload, process.env.APP_JWT_SECRET));
+            } catch (error) {
+                const msg = (error as Error).message;
+                if (msg === "Unable to sign in.")
+                    res.status(401);
+                else
+                    res.status(400);
+                res.send({ message: msg });
+            }
         }
     );
     router.get("/user/me",
@@ -41,5 +47,28 @@ export function createUserRouter(userService: IUserService) {
             res.send(user);
         }
     );
+    router.patch("/user/mango",
+        query("token").notEmpty().withMessage("`token` is required and must not be empty."),
+        expressjwt({ 
+            secret: process.env.APP_JWT_SECRET!, 
+            algorithms: ["HS256"]
+        }),
+        async (req: JWTRequest<JWTPayload>, res) => {
+            const result = validationResult(req);
+            if (!result.isEmpty()) {
+                res.status(400).send({ message: result.array()[0].msg });
+                return;
+            }
+            if (!req.auth || !req.auth.id) {
+                res.sendStatus(401);
+                return;
+            }
+            if (await userService.updateMangoToken(req.auth.id, req.query.token as string)) {
+                res.sendStatus(200);
+            } else {
+                res.status(400).send({ message: "Invalid token." });
+            }
+        }
+    )
     return router;
 }
