@@ -44,7 +44,7 @@ export interface ISharedCalendarService {
         duration?: number
     }): Promise<SharedEventResp>;
     deleteSharedEvent(eventId: number, ownerId: number): Promise<void>;
-    acceptInvite(eventId: number, userId: number): Promise<SharedEventResp>;
+    acceptInvite(eventId: number, userId: number): Promise<void>;
     rejectInvite(eventId: number, userId: number): Promise<void>;
     arrangeEvent(eventId: number, ownerId: number): Promise<SharedEventResp>;
     findOptimalMeetingTime(eventId: number): Promise<Date | null>;
@@ -282,7 +282,7 @@ export class SharedCalendarService implements ISharedCalendarService {
         await this._sharedEvent.save(event);
     }
 
-    async acceptInvite(eventId: number, userId: number): Promise<SharedEventResp> {
+    async acceptInvite(eventId: number, userId: number): Promise<void> {
         const user = await this._user.findOneBy({ id: userId });
         if (!user)
             throw new Error("User not found.");
@@ -306,7 +306,7 @@ export class SharedCalendarService implements ISharedCalendarService {
         invite.status = InviteStatus.ACCEPTED;
         await this._invite.save(invite);
         event.members.push(user);
-        const updatedEvent = await this._sharedEvent.save(event);
+        await this._sharedEvent.save(event);
         await this._notifyUser(
             this._formatCMUEmail(event.owner.CMUUsername), 
             {
@@ -319,7 +319,6 @@ export class SharedCalendarService implements ISharedCalendarService {
                 }
             }
         );
-        return transformSharedEventResp(userId, updatedEvent);
     }
 
     async rejectInvite(eventId: number, userId: number): Promise<void> {
