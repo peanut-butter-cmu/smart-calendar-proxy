@@ -175,27 +175,34 @@ const sharedNewSchema = checkSchema({
             }
         }
     },
-    members: {
+    invites: {
         in: "body",
         custom: {
             options: (vals: any[]) => {
                 if (!Array.isArray(vals))
-                    throw new Error("`members` must be array.");
+                    throw new Error("`invites` must be array.");
                 if (!vals.every(e => typeof e === "string"))
-                    throw new Error("Each element in `members` must be string.");
+                    throw new Error("Each element in `invites` must be string.");
                 if (!vals.every(validateCMUEmail))
-                    throw new Error("Each element in `members` must an e-mail.");
+                    throw new Error("Each element in `invites` must an e-mail.");
                 if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
-                    throw new Error("Each element in `members` must be unique.");
+                    throw new Error("Each element in `invites` must be unique.");
                 return true;
             }
         }
+    },
+    duration: {
+        in: "body",
+        isInt: {
+            options: { min: 30, max: 8 * 60 }
+        },
+        errorMessage: "`duration` must be a positive integer representing minutes."
     },
     "*": {
         in: "body",
         custom: {
             options: (_, {path}) => {
-                if (!["title", "reminders", "idealDays", "idealTimeRange", "members"].includes(path))
+                if (!["title", "reminders", "idealDays", "idealTimeRange", "invites", "duration"].includes(path))
                     throw new Error(`Additional field are not expected (${path}).`);
                 return true;
             }
@@ -258,28 +265,36 @@ const sharedEditSchema = checkSchema({
             }
         }
     },
-    members: {
+    invites: {
         in: "body",
         optional: true,
         custom: {
             options: (vals: any[]) => {
                 if (!Array.isArray(vals))
-                    throw new Error("`members` must be array.");
+                    throw new Error("`invites` must be array.");
                 if (!vals.every(e => typeof e === "string"))
-                    throw new Error("Each element in `members` must be string.");
+                    throw new Error("Each element in `invites` must be string.");
                 if (!vals.every(validateCMUEmail))
-                    throw new Error("Each element in `members` must an e-mail.");
+                    throw new Error("Each element in `invites` must an e-mail.");
                 if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
-                    throw new Error("Each element in `members` must be unique.");
+                    throw new Error("Each element in `invites` must be unique.");
                 return true;
             }
         }
+    },
+    duration: {
+        in: "body",
+        optional: true,
+        isInt: {
+            options: { min: 30, max: 8 * 60 }
+        },
+        errorMessage: "`duration` must be a positive integer representing minutes."
     },
     "*": {
         in: "body",
         custom: {
             options: (_, {path}) => {
-                if (!["title", "reminders", "idealDays", "idealTimeRange", "members"].includes(path))
+                if (!["title", "reminders", "idealDays", "idealTimeRange", "invites", "duration"].includes(path))
                     throw new Error(`Additional field are not expected (${path}).`);
                 return true;
             }

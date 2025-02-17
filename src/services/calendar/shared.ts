@@ -1,16 +1,17 @@
-import { DataSource, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
-import { SharedEvent } from "../../models/sharedEvent.entity.js";
+import { DataSource, LessThanOrEqual, MoreThanOrEqual, Not, Repository } from "typeorm";
+import { SharedEvent, SharedEventStatus } from "../../models/sharedEvent.entity.js";
 import { SharedEventInvite, InviteStatus } from "../../models/sharedEventInvite.entity.js";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { NotificationService } from "../notification/index.js";
 import { NotificationType } from "../../models/notification.entity.js";
 import { NotificationDeliveryType } from "../notification/types.js";
 import { User } from "../../models/user.entity.js";
+import { transformSharedEventResp, SharedEventResp } from "../../helpers/transform.js";
 
 const CMU_EMAIL_DOMAIN = "@cmu.ac.th";
 
 export interface SharedEventsWithPagination {
-    sharedEvents: SharedEvent[];
+    sharedEvents: SharedEventResp[];
     pagination: {
         total: number;
         limit: number;
@@ -31,66 +32,26 @@ export interface ISharedCalendarService {
         reminders: number[],
         idealDays: number[],
         idealTimeRange: { start: string, end: string },
-        members: string[]
-    }): Promise<SharedEvent>;
+        invites: string[],
+        duration: number
+    }): Promise<SharedEventResp>;
     updateSharedEvent(eventId: number, ownerId: number, params: {
         title?: string,
         reminders?: number[],
         idealDays?: number[],
         idealTimeRange?: { start: string, end: string },
-        members?: string[]
-    }): Promise<SharedEvent>;
+        invites?: string[],
+        duration?: number
+    }): Promise<SharedEventResp>;
     deleteSharedEvent(eventId: number, ownerId: number): Promise<void>;
-    acceptInvite(eventId: number, userId: number): Promise<SharedEvent>;
-    rejectInvite(eventId: number, userId: number): Promise<SharedEvent>;
-    arrangeEvent(eventId: number, ownerId: number): Promise<SharedEvent>;
-    findOptimalMeetingTime(eventId: number, duration: number): Promise<Date | null>;
+    acceptInvite(eventId: number, userId: number): Promise<SharedEventResp>;
+    rejectInvite(eventId: number, userId: number): Promise<void>;
+    arrangeEvent(eventId: number, ownerId: number): Promise<SharedEventResp>;
+    findOptimalMeetingTime(eventId: number): Promise<Date | null>;
     scheduleEventMeeting(eventId: number, ownerId: number, title: string, startTime: Date, duration: number): Promise<CalendarEvent>;
 }
 
 export class SharedCalendarService implements ISharedCalendarService {
-    async getSharedEvents(userId: number, params: {
-        status?: InviteStatus;
-        limit?: number;
-        offset?: number;
-    }): Promise<SharedEventsWithPagination> {
-        const user = await this._user.findOneBy({ id: userId });
-        if (!user) throw new Error("User not found");
-
-        const userEmail = this._formatCMUEmail(user.CMUUsername);
-        
-        const queryBuilder = this._sharedEvent
-            .createQueryBuilder("event")
-            .leftJoinAndSelect("event.invites", "invite")
-            .leftJoinAndSelect("event.members", "member")
-            .leftJoinAndSelect("event.events", "calendarEvent")
-            .where("event.owner.id = :userId", { userId })
-            .orWhere("invite.email = :email", { email: userEmail });
-
-        if (params.status) {
-            queryBuilder.andWhere("invite.status = :status", { status: params.status });
-        }
-
-        const total = await queryBuilder.getCount();
-        
-        queryBuilder
-            .take(params.limit || 1000)
-            .skip(params.offset || 0)
-            .orderBy("event.id", "DESC");
-
-        const events = await queryBuilder.getMany();
-
-        return {
-            sharedEvents: events,
-            pagination: {
-                total,
-                limit: params.limit || 1000,
-                offset: params.offset || 0,
-                hasMore: (params.offset || 0) + (params.limit || 1000) < total
-            }
-        };
-    }
-
     private _sharedEvent: Repository<SharedEvent>;
     private _invite: Repository<SharedEventInvite>;
     private _event: Repository<CalendarEvent>;
@@ -102,6 +63,34 @@ export class SharedCalendarService implements ISharedCalendarService {
         this._event = dataSource.getRepository(CalendarEvent);
         this._user = dataSource.getRepository(User);
         this._notificationService = new NotificationService(dataSource);
+    }
+
+    async getSharedEvents(userId: number, params: {
+        status?: InviteStatus;
+        limit?: number;
+        offset?: number;
+    }): Promise<SharedEventsWithPagination> {
+        const user = await this._user.findOneBy({ id: userId });
+        if (!user) throw new Error("User not found.");
+        const events = await this._sharedEvent.find({
+            where: [
+                { status: Not(SharedEventStatus.DELETED), owner: { id: userId } }, 
+                { status: Not(SharedEventStatus.DELETED), invites: { email: this._formatCMUEmail(user.CMUUsername)} },
+            ],
+            relations: ["invites", "members", "events", "owner"],
+            take: params.limit || 1000,
+            skip: params.offset || 0,
+            order: { id: "DESC" }
+        });
+        return {
+            sharedEvents: events.map(evnt => transformSharedEventResp(userId, evnt)),
+            pagination: {
+                total: events.length,
+                limit: params.limit || 1000,
+                offset: params.offset || 0,
+                hasMore: (params.offset || 0) + (params.limit || 1000) < events.length
+            }
+        };
     }
 
     private _formatCMUEmail(username: string): string {
@@ -179,35 +168,34 @@ export class SharedCalendarService implements ISharedCalendarService {
         reminders: number[],
         idealDays: number[],
         idealTimeRange: { start: string, end: string },
-        members: string[]
-    }): Promise<SharedEvent> {
+        invites: string[],
+        duration: number
+    }): Promise<SharedEventResp> {
         const owner = await this._user.findOneBy({ id: params.ownerId });
         if (!owner)
             throw new Error("Owner not found");
-
         const event = this._sharedEvent.create({
             owner,
             title: params.title,
             reminders: params.reminders,
             idealDays: params.idealDays,
             idealTimeRange: params.idealTimeRange,
-            members: [owner]
+            duration: params.duration,
+            status: SharedEventStatus.PENDING,
+            members: [owner],
+            invites: []
         });
-
         const savedEvent = await this._sharedEvent.save(event);
-
-        await Promise.all(params.members.map(async (email) => {
+        await Promise.all(params.invites.map(async (email) => {
             const user = await this._user.findOneBy({ 
                 CMUUsername: this._formatCMUUsername(email) 
             });
-            console.log(user, this._formatCMUUsername(email) );
-            
             const invite = this._invite.create({
                 event: savedEvent,
                 email: email,
                 status: InviteStatus.PENDING
             });
-            await this._invite.save(invite);
+            const savedInvite = await this._invite.save(invite);
             await this._notifyUser(email, {
                 type: NotificationType.GROUP_INVITE,
                 userId: user?.id,
@@ -216,176 +204,174 @@ export class SharedCalendarService implements ISharedCalendarService {
                     eventName: savedEvent.title
                 }
             });
+            event.invites.push(savedInvite);
         }));
-
-        return savedEvent;
+        return transformSharedEventResp(owner.id, savedEvent);
     }
 
-    async updateSharedEvent(eventId: number, ownerId: number, params: {
-        title?: string,
-        reminders?: number[],
-        idealDays?: number[],
-        idealTimeRange?: { start: string, end: string },
-        members?: string[]
-    }): Promise<SharedEvent> {
-        const event = await this._sharedEvent.findOne({
+    async updateSharedEvent(eventId: number, ownerId: number, newEventRaw: Partial<{
+        title: string,
+        reminders: number[],
+        idealDays: number[],
+        idealTimeRange: { start: string, end: string },
+        invites: string[],
+        duration: number
+    }>): Promise<SharedEventResp> {
+        const originalEvent = await this._sharedEvent.findOne({
             where: { id: eventId, owner: { id: ownerId } },
-            relations: ["members"]
+            relations: ["members", "invites", "owner"]
         });
-
-        if (!event)
-            throw new Error("Event not found or unauthorized");
-
-        if (params.title) event.title = params.title;
-        if (params.reminders) event.reminders = params.reminders;
-        if (params.idealDays) event.idealDays = params.idealDays;
-        if (params.idealTimeRange) event.idealTimeRange = params.idealTimeRange;
-
-        if (params.members) { // TODO: notify only updated user
-            await Promise.all(params.members.map(async (email) => {
-                const invite = this._invite.create({
-                    event,
-                    email: email,
-                    status: InviteStatus.PENDING
-                });
-                await this._invite.save(invite);
-                await this._notifyUser(email, {
-                    type: NotificationType.GROUP_INVITE,
-                    data: {
-                        eventId: event.id,
-                        eventName: event.title
-                    }
-                });
-            }));
-        }
-
-        return await this._sharedEvent.save(event);
+        if (!originalEvent)
+            throw new Error("Event not found.");
+        if (originalEvent.status === SharedEventStatus.ARRANGED)
+            throw new Error("Cannot update an arranged event.");
+        if (originalEvent.status === SharedEventStatus.DELETED)
+            throw new Error("Event already deleted.");
+        const newEvent = { 
+            ...originalEvent,
+            ...newEventRaw,
+            invites: newEventRaw.invites?.map(email => this._invite.create({ email }))
+        };
+        const notifyEmail = (originalEvent.invites || []) // filter out new email
+            .filter(invite => invite.status !== InviteStatus.PENDING) // what to filtered out.
+            .map(invite => invite.email)
+            .filter(email => !newEventRaw.invites?.includes(email))
+        await Promise.all(notifyEmail.map(async (email) => {
+            const invite = this._invite.create({
+                event: originalEvent,
+                email: email,
+                status: InviteStatus.PENDING
+            });
+            await this._invite.save(invite);
+            await this._notifyUser(email, {
+                type: NotificationType.GROUP_INVITE,
+                data: {
+                    eventId: originalEvent.id,
+                    eventName: originalEvent.title
+                }
+            });
+        }));
+        return transformSharedEventResp(ownerId, await this._sharedEvent.save(newEvent));
     }
 
     async deleteSharedEvent(eventId: number, ownerId: number): Promise<void> {
         const event = await this._sharedEvent.findOne({
-            where: { id: eventId, owner: { id: ownerId } },
-            relations: ["members", "members.session"]
-        });
-
-        if (!event)
-            throw new Error("Event not found or unauthorized");
-
-        // Notify members
-        await Promise.all(event.members.map(async (member) => {
-            const formattedEmail = this._formatCMUEmail(member.CMUUsername);
-            await this._notifyUser(formattedEmail, {
-                type: NotificationType.EVENT_DELETED,
-                userId: ownerId,
-                data: {
-                    eventId: event.id,
-                    eventName: event.title
-                }
-            });
-        }));
-
-        await this._sharedEvent.remove(event);
-    }
-
-    async acceptInvite(eventId: number, userId: number): Promise<SharedEvent> {
-        const user = await this._user.findOne({
-            where: { id: userId },
-            relations: ["session"]
-        });
-        if (!user) throw new Error("User not found");
-
-        const event = await this._sharedEvent.findOne({
-            where: { id: eventId },
+            where: {
+                id: eventId, 
+                status: Not(SharedEventStatus.DELETED),
+                owner: { id: ownerId }
+            },
             relations: ["owner", "members"]
         });
-        if (!event) throw new Error("Event not found.");
+        if (!event)
+            throw new Error("Event not found.");
+        event.status = SharedEventStatus.DELETED;
+        await Promise.all(event.members.map(async (member) => {
+            await this._notifyUser(
+                this._formatCMUEmail(member.CMUUsername), 
+                {
+                    type: NotificationType.EVENT_DELETED,
+                    userId: ownerId,
+                    data: {
+                        eventId: event.id,
+                        eventName: event.title
+                    }
+                }
+            );
+        }));
+        await this._sharedEvent.save(event);
+    }
 
-        const invite = await this._invite.findOne({
-            where: {
-                event: { id: eventId },
-                email: this._formatCMUEmail(user.CMUUsername),
-                status: InviteStatus.PENDING
-            }
+    async acceptInvite(eventId: number, userId: number): Promise<SharedEventResp> {
+        const user = await this._user.findOneBy({ id: userId });
+        if (!user)
+            throw new Error("User not found.");
+        const event = await this._sharedEvent.findOne({
+            where: { id: eventId },
+            relations: ["owner", "members", "invites", "events"]
         });
-        if (!invite) throw new Error("Invite not found or already processed.");
-
+        if (!event)
+            throw new Error("Invite not found.");
+        if (event.status === SharedEventStatus.ARRANGED)
+            throw new Error("Cannot accept invite for an arranged event.");
+        if (event.status === SharedEventStatus.DELETED)
+            throw new Error("Event already deleted.");
+        const invite = await this._invite.findOneBy({
+            event: { id: eventId },
+            email: this._formatCMUEmail(user.CMUUsername),
+            status: InviteStatus.PENDING
+        });
+        if (!invite)
+            throw new Error("Invite not found.");
         invite.status = InviteStatus.ACCEPTED;
         await this._invite.save(invite);
-
         event.members.push(user);
         const updatedEvent = await this._sharedEvent.save(event);
-
-        // Notify owner
-        const owner = await this._user.findOne({
-            where: { id: event.owner.id }
-        });
-
-        if (owner) {
-            const formattedEmail = this._formatCMUEmail(owner.CMUUsername);
-            await this._notifyUser(formattedEmail, {
+        await this._notifyUser(
+            this._formatCMUEmail(event.owner.CMUUsername), 
+            {
                 type: NotificationType.INVITE_ACCEPTED,
-                userId: owner.id,
+                userId: event.owner.id,
                 data: {
                     eventId: event.id,
                     eventName: event.title,
                     memberEmail: invite.email
                 }
-            });
-        }
-
-        return updatedEvent;
+            }
+        );
+        return transformSharedEventResp(userId, updatedEvent);
     }
 
-    async rejectInvite(eventId: number, userId: number): Promise<SharedEvent> {
-        const user = await this._user.findOne({
-            where: { id: userId },
-            relations: ["session"]
-        });
-        if (!user) throw new Error("User not found");
-
+    async rejectInvite(eventId: number, userId: number): Promise<void> {
+        const user = await this._user.findOneBy({ id: userId });
+        if (!user) 
+            throw new Error("User not found.");
         const event = await this._sharedEvent.findOne({
             where: { id: eventId },
             relations: ["owner"]
         });
-        if (!event) throw new Error("Event not found");
-
-        const invite = await this._invite.findOne({
-            where: {
-                event: { id: eventId },
-                email: this._formatCMUEmail(user.CMUUsername),
-                status: InviteStatus.PENDING
-            }
+        if (!event)
+            throw new Error("Invite not found.");
+        if (event.status === SharedEventStatus.ARRANGED)
+            throw new Error("Cannot reject invite for an arranged event.");
+        if (event.status === SharedEventStatus.DELETED)
+            throw new Error("Event already deleted.");
+        const invite = await this._invite.findOneBy({
+            event: { id: eventId },
+            email: this._formatCMUEmail(user.CMUUsername),
+            status: InviteStatus.PENDING
         });
-        if (!invite) throw new Error("Invite not found or already processed");
-
+        if (!invite) 
+            throw new Error("Invite not found.");
         invite.status = InviteStatus.REJECTED;
         await this._invite.save(invite);
-
-        // Notify owner
-        const formattedEmail = this._formatCMUEmail(user.CMUUsername);
-        await this._notifyUser(formattedEmail, {
-            type: NotificationType.INVITE_REJECTED,
-            userId: userId,
-            data: {
-                eventId: event.id,
-                eventName: event.title,
-                memberEmail: invite.email
+        await this._notifyUser(
+            this._formatCMUEmail(event.owner.CMUUsername), 
+            {
+                type: NotificationType.INVITE_REJECTED,
+                userId: event.owner.id,
+                data: {
+                    eventId: event.id,
+                    eventName: event.title,
+                    memberEmail: invite.email
+                }
             }
-        });
-
-        return event;
+        );
     }
 
-    async arrangeEvent(eventId: number, ownerId: number): Promise<SharedEvent> {
+    async arrangeEvent(eventId: number, ownerId: number): Promise<SharedEventResp> {
         const event = await this._sharedEvent.findOne({
             where: { id: eventId, owner: { id: ownerId } },
-            relations: ["members", "invites"]
+            relations: ["members", "invites", "events", "owner"]
         });
-
         if (!event)
             throw new Error("Event not found or unauthorized.");
+        if (event.status === SharedEventStatus.ARRANGED)
+            throw new Error("Event is already arranged.");
+        if (event.status === SharedEventStatus.DELETED)
+            throw new Error("Event already deleted.");
 
-        // Remove members who rejected or haven"t responded
+        // Remove members who rejected or haven't responded
         const acceptedInvites = event.invites.filter(invite => invite.status === InviteStatus.ACCEPTED);
         event.members = event.members.filter(member => 
             member.id === ownerId || // Keep owner
@@ -395,18 +381,17 @@ export class SharedCalendarService implements ISharedCalendarService {
             )
         );
 
-        return await this._sharedEvent.save(event);
+        event.status = SharedEventStatus.ARRANGED;
+        return transformSharedEventResp(ownerId, await this._sharedEvent.save(event));
     }
 
-    async findOptimalMeetingTime(eventId: number, duration: number): Promise<Date | null> {
+    async findOptimalMeetingTime(eventId: number): Promise<Date | null> {
         const event = await this._sharedEvent.findOne({
             where: { id: eventId },
-            relations: ["members"]
+            relations: ["members", "owner"]
         });
-
         if (!event)
             throw new Error("Event not found");
-
         const oneWeekFromNow = new Date();
         oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
 
@@ -425,7 +410,7 @@ export class SharedCalendarService implements ISharedCalendarService {
         const allEvents = memberEvents.flat();
         const availableSlots = this.findAvailableTimeSlots(
             allEvents,
-            duration,
+            event.duration,
             event.idealDays,
             [event.idealTimeRange] // Wrap in array for compatibility with existing method
         );
@@ -486,7 +471,7 @@ export class SharedCalendarService implements ISharedCalendarService {
     ): Promise<CalendarEvent> {
         const event = await this._sharedEvent.findOne({
             where: { id: eventId },
-            relations: ["members", "members.session"]
+            relations: ["members", "owner"]
         });
 
         if (!event)

@@ -9,7 +9,9 @@
     "dev": "nodemon --exec \"cross-env NODE_ENV=development node --no-warnings=ExperimentalWarning --loader ts-node/esm\" src/app.ts",
     "migration:generate": "cross-env NODE_ENV=development typeorm-ts-node-esm migration:generate ./src/migrations/migration -d ./src/dataSource.ts",
     "migration:dev": "typeorm-ts-node-esm migration:run -d ./src/dataSource.ts",
-    "migration:prod": "typeorm migration:run -d ./dist/dataSource.js"
+    "migration:revert:dev": "typeorm-ts-node-esm migration:revert -d ./src/dataSource.ts",
+    "migration:prod": "typeorm migration:run -d ./dist/dataSource.js",
+    "migration:revert:prod": "migration:run migration:revert -d ./dist/dataSource.js"
   },
   "type": "module",
   "author": "",

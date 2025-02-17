@@ -4,6 +4,12 @@ import { User } from "./user.entity.js";
 import { ReminderOptions } from "./calendarEventGroup.entity.js";
 import { SharedEventInvite } from "./sharedEventInvite.entity.js";
 
+export enum SharedEventStatus {
+    PENDING = "pending",
+    ARRANGED = "arranged",
+    DELETED = "deleted"
+}
+
 @Entity()
 export class SharedEvent {
     @PrimaryGeneratedColumn()
@@ -22,6 +28,16 @@ export class SharedEvent {
     @Column("jsonb")
     public idealTimeRange: { start: string, end: string };
 
+    @Column({
+        type: "enum",
+        enum: SharedEventStatus,
+        default: SharedEventStatus.PENDING
+    })
+    public status: SharedEventStatus;
+
+    @Column("int")
+    public duration: number;
+
     @ManyToOne(() => User)
     @Index()
     public owner: Relation<User>;
@@ -30,10 +46,10 @@ export class SharedEvent {
     @JoinTable()
     public members: Relation<User[]>;
 
-    @OneToMany(() => SharedEventInvite, invite => invite.event)
+    @OneToMany(() => SharedEventInvite, invite => invite.event, { cascade: true })
     public invites: Relation<SharedEventInvite[]>;
 
-    @ManyToMany(() => CalendarEvent)
+    @ManyToMany(() => CalendarEvent, { cascade: true })
     @JoinTable()
     public events: Relation<CalendarEvent[]>;
 
