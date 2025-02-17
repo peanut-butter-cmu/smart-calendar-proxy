@@ -33,7 +33,7 @@ export function createGroupRoutes(calendarService: ICalendarService) {
         async (req: JWTRequest<JWTPayload>, res: Response) => {
             const valResult = validationResult(req);
             if (!valResult.isEmpty()) {
-                res.status(400).send(valResult.array());
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
             if (!req.auth || !req.auth.id) {
@@ -58,7 +58,7 @@ export function createGroupRoutes(calendarService: ICalendarService) {
             async (req: JWTRequest<JWTPayload>, res: Response) => {
                 const valResult = validationResult(req);
                 if (!valResult.isEmpty()) {
-                    res.status(400).send(valResult.array());
+                    res.status(400).send({ message: valResult.array()[0].msg });
                     return;
                 }
                 if (!req.auth || !req.auth.id) {

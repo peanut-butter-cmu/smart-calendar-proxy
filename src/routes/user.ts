@@ -48,7 +48,7 @@ export function createUserRouter(userService: IUserService) {
         }
     );
     router.patch("/user/mango",
-        query("token").notEmpty(),
+        query("token").notEmpty().withMessage("`token` is required and must not be empty."),
         expressjwt({ 
             secret: process.env.APP_JWT_SECRET!, 
             algorithms: ["HS256"]
@@ -56,7 +56,7 @@ export function createUserRouter(userService: IUserService) {
         async (req: JWTRequest<JWTPayload>, res) => {
             const result = validationResult(req);
             if (!result.isEmpty()) {
-                res.send(result);
+                res.status(400).send({ message: result.array()[0].msg });
                 return;
             }
             if (!req.auth || !req.auth.id) {
@@ -66,7 +66,7 @@ export function createUserRouter(userService: IUserService) {
             if (await userService.updateMangoToken(req.auth.id, req.query.token as string)) {
                 res.sendStatus(200);
             } else {
-                res.sendStatus(400);
+                res.status(400).send({ message: "Invalid token." });
             }
         }
     )

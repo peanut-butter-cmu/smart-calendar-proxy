@@ -45,7 +45,7 @@ export class User {
     @OneToMany(() => Session, (session) => session.owner, { cascade: true })
     public sessions: Relation<Session[]>;
 
-    @Column({ select: false })
+    @Column()
     public CMUUsername: string;
 
     @Column({ select: false })
@@ -57,8 +57,6 @@ export class User {
     @BeforeInsert()
     @BeforeUpdate()
     encryptSensitiveData() {
-        if (this.CMUUsername)
-            this.CMUUsername = this._encrypt(this.CMUUsername);
         if (this.CMUPassword)
             this.CMUPassword = this._encrypt(this.CMUPassword);
         if (this.mangoToken)

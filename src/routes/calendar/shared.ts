@@ -1,12 +1,47 @@
 import { Router, Response } from "express";
 import { expressjwt, Request as JWTRequest } from "express-jwt";
 import { JWTPayload } from "./index.js";
-import { param, validationResult } from "express-validator";
+import { param, query, validationResult } from "express-validator";
 import { ISharedCalendarService } from "../../services/calendar/shared.js";
-import { sharedEditSchema, sharedNewSchema } from "../schema/calendar.schema.js";
+import { sharedEditSchema, sharedNewSchema, paginationSchema } from "../schema/calendar.schema.js";
+import { InviteStatus } from "../../models/sharedEventInvite.entity.js";
 
 export function createSharedCalendarRoutes(sharedCalendarService: ISharedCalendarService) {
     const router = Router();
+
+    router.get("/calendar/events/shared",
+        expressjwt({ 
+            secret: process.env.APP_JWT_SECRET!, 
+            algorithms: ["HS256"]
+        }),
+        query("status").optional().isIn(Object.values(InviteStatus)),
+        paginationSchema,
+        async (req: JWTRequest<JWTPayload>, res: Response) => {
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send({ message: valResult.array()[0].msg });
+                return;
+            }
+            if (!req.auth?.id) {
+                res.sendStatus(401);
+                return;
+            }
+
+            try {
+                const { status, limit, offset } = req.query;
+                const result = await sharedCalendarService.getSharedEvents(
+                    req.auth.id,
+                    {
+                        status: status as InviteStatus,
+                        limit: limit ? parseInt(limit as string) : undefined,
+                        offset: offset ? parseInt(offset as string) : undefined
+                    }
+                );
+                res.send(result);
+            } catch (error) {
+                res.status(400).send({ message: (error as Error).message });
+            }
+        });
 
     router.post("/calendar/event/shared",
         expressjwt({ 

@@ -3,7 +3,7 @@ import { expressjwt, Request as JWTRequest } from "express-jwt";
 import { JWTPayload } from "./index.js";
 import { ICalendarService } from "../../services/calendar/index.js";
 import { param, validationResult } from "express-validator";
-import { eventNewSchema, eventEditSchema } from "../schema/calendar.schema.js";
+import { eventNewSchema, eventEditSchema, paginationSchema, dateRangeSchema } from "../schema/calendar.schema.js";
 
 export function createEventRoutes(calendarService: ICalendarService) {
     const router = Router();
@@ -12,17 +12,28 @@ export function createEventRoutes(calendarService: ICalendarService) {
             secret: process.env.APP_JWT_SECRET!, 
             algorithms: ["HS256"]
         }),
+        dateRangeSchema,
+        paginationSchema,
         async (req: JWTRequest<JWTPayload>, res: Response) => {
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send({ message: valResult.array()[0].msg });
+                return;
+            }
             if (!req.auth || !req.auth.id) {
                 res.sendStatus(401);
                 return;
             }
-            const events = await calendarService.getEventsByOwner(req.auth.id);
-            if (!events) {
-                res.sendStatus(401);
-                return;
-            }
-            res.send(events);
+
+            const { startDate, endDate, limit, offset } = req.query;
+            const result = await calendarService.getEventsByOwner(
+                req.auth.id,
+                new Date(startDate as string),
+                new Date(endDate as string),
+                limit ? parseInt(limit as string) : undefined,
+                offset ? parseInt(offset as string) : undefined
+            );
+            res.send(result);
         });
     router.get("/calendar/event/:id", 
         param("id").notEmpty().isNumeric(),
@@ -33,7 +44,7 @@ export function createEventRoutes(calendarService: ICalendarService) {
         async (req: JWTRequest<JWTPayload>, res: Response) => {
             const valResult = validationResult(req);
             if (!valResult.isEmpty()) {
-                res.status(400).send(valResult.array());
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
             if (!req.auth || !req.auth.id) {
@@ -57,7 +68,7 @@ export function createEventRoutes(calendarService: ICalendarService) {
         async (req: JWTRequest<JWTPayload>, res: Response) => {
             const valResult = validationResult(req);
             if (!valResult.isEmpty()) {
-                res.status(400).send(valResult.array());
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
             if (!req.auth || !req.auth.id) {
@@ -81,7 +92,7 @@ export function createEventRoutes(calendarService: ICalendarService) {
         async (req: JWTRequest<JWTPayload>, res: Response) => {
             const valResult = validationResult(req);
             if (!valResult.isEmpty()) {
-                res.status(400).send(valResult.array());
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
             if (!req.auth || !req.auth.id) {
@@ -107,7 +118,7 @@ export function createEventRoutes(calendarService: ICalendarService) {
         async (req: JWTRequest<JWTPayload>, res: Response) => {
             const valResult = validationResult(req);
             if (!valResult.isEmpty()) {
-                res.status(400).send(valResult.array());
+                res.status(400).send({ message: valResult.array()[0].msg });
                 return;
             }
             if (!req.auth || !req.auth.id) {

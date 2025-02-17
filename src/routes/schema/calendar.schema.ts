@@ -27,11 +27,11 @@ function isIsoDate(str: string) {
     return !isNaN(d.getTime()) && d.toISOString()===str; // valid date 
 }
 
-function validateEmail(email: string) {
+function validateCMUEmail(email: string) {
     return String(email)
       .toLowerCase()
       .match(
-        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@cmu\.ac\.th$/
       );
   };
 
@@ -183,7 +183,7 @@ const sharedNewSchema = checkSchema({
                     throw new Error("`members` must be array.");
                 if (!vals.every(e => typeof e === "string"))
                     throw new Error("Each element in `members` must be string.");
-                if (!vals.every(validateEmail))
+                if (!vals.every(validateCMUEmail))
                     throw new Error("Each element in `members` must an e-mail.");
                 if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
                     throw new Error("Each element in `members` must be unique.");
@@ -267,7 +267,7 @@ const sharedEditSchema = checkSchema({
                     throw new Error("`members` must be array.");
                 if (!vals.every(e => typeof e === "string"))
                     throw new Error("Each element in `members` must be string.");
-                if (!vals.every(validateEmail))
+                if (!vals.every(validateCMUEmail))
                     throw new Error("Each element in `members` must an e-mail.");
                 if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
                     throw new Error("Each element in `members` must be unique.");
@@ -287,6 +287,41 @@ const sharedEditSchema = checkSchema({
     }
 });
 
+const paginationSchema = checkSchema({
+    limit: {
+        in: "query",
+        optional: true,
+        isInt: {
+            options: { min: 1, max: 1000 }
+        },
+        toInt: true,
+        errorMessage: "`limit` must be between 1 and 1000."
+    },
+    offset: {
+        in: "query",
+        optional: true,
+        isInt: {
+            options: { min: 0 }
+        },
+        toInt: true,
+        errorMessage: "`offset` must be a non-negative integer."
+    }
+});
+
+const dateRangeSchema = checkSchema({
+    startDate: {
+        in: "query",
+        isDate: true,
+        errorMessage: "`startDate` is required and must be a valid date."
+    },
+    endDate: {
+        in: "query",
+        isDate: true,
+        errorMessage: "`endDate` is required and must be a valid date."
+    }
+});
+
 export { eventNewSchema, eventEditSchema };
 export { groupEditSchema };
-export { sharedNewSchema, sharedEditSchema }
+export { sharedNewSchema, sharedEditSchema };
+export { paginationSchema, dateRangeSchema };

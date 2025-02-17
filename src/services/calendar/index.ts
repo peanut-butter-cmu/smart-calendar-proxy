@@ -1,4 +1,4 @@
-import { DataSource, Repository } from "typeorm";
+import { Between, DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
 import { CalendarEventGroup, EventGroupType } from "../../models/calendarEventGroup.entity.js";
 import { CalendarTransaction } from "./transaction.js";
@@ -11,12 +11,24 @@ export type CalendarEventResp = Omit<CalendarEvent, "owner" | "groups" | "create
 
 export type EventGroupResp = Omit<CalendarEventGroup, "owner" | "readonly" | "created" | "modified" | "events">;
 
+export interface PaginationResp {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+}
+
+export interface EventsWithPagination {
+    events: CalendarEventResp[];
+    pagination: PaginationResp;
+}
+
 export interface ICalendarService {
     createEvent(ownerId: number, newEvent: Omit<CalendarEvent, "id">): Promise<CalendarEventResp | null>;
     getEventById(ownerId: number, eventId: number): Promise<CalendarEventResp | null>;
     editEventById(ownerId: number, eventId: number, updatedEvent: Partial<CalendarEvent>): Promise<CalendarEventResp | null>;
     deleteEventById(ownerId: number, eventId: number): Promise<boolean>;
-    getEventsByOwner(ownerId: number): Promise<CalendarEventResp[]>;
+    getEventsByOwner(ownerId: number, startDate: Date, endDate: Date, limit?: number, offset?: number): Promise<EventsWithPagination>;
     getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]>;
     syncEvents(ownerId: number): Promise<void>;
     getGroupById(ownerId: number, groupId: number): Promise<EventGroupResp | null>;
@@ -101,14 +113,31 @@ export class CalendarService implements ICalendarService {
         const result = await this._calendarEvent.remove(findResult);
         return result !== null;
     }
-    async getEventsByOwner(ownerId: number): Promise<CalendarEventResp[]> {
-        const events = await this._calendarEvent.find({
-            where: { owner: { id: ownerId } },
-            relations: ["groups"]
+    async getEventsByOwner(ownerId: number, startDate: Date, endDate: Date, limit: number = 1000, offset: number = 0): Promise<EventsWithPagination> {
+        const [events, total] = await this._calendarEvent.findAndCount({
+            where: { 
+                owner: { id: ownerId },
+                start: Between(startDate, endDate)
+            },
+            relations: ["groups"],
+            take: limit,
+            skip: offset,
+            order: { start: "ASC" }
         });
-        return events
-            .map(({ id, title, start, end, groups }) => ({ id, title, start, end, groups })) // filter only needed keys
-            .map(CalendarService._transformEventResp); // map groups to extract only id
+
+        const transformedEvents = events
+            .map(({ id, title, start, end, groups }) => ({ id, title, start, end, groups }))
+            .map(CalendarService._transformEventResp);
+
+        return {
+            events: transformedEvents,
+            pagination: {
+                total,
+                limit,
+                offset,
+                hasMore: offset + limit < total
+            }
+        };
     }
     async getGroupsByOwner(ownerId: number): Promise<EventGroupResp[]> {
         const groups = await this._calendarEGroup.findBy({ owner: { id: ownerId } });

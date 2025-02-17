@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Migration1739722285167 implements MigrationInterface {
-    name = 'Migration1739722285167'
+export class Migration1739726696932 implements MigrationInterface {
+    name = 'Migration1739726696932'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TYPE "public"."calendar_event_group_type_enum" AS ENUM('system', 'course')`);
