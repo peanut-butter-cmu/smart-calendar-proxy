@@ -20,29 +20,26 @@ export interface SharedEventsWithPagination {
     };
 }
 
+export type SharedEventNew = {
+    ownerId: number,
+    title: string,
+    reminders: number[],
+    idealDays: number[],
+    idealTimeRange: { start: string, end: string },
+    invites: string[],
+    duration: number
+};
+
+export type SharedEventEdit = Partial<Omit<SharedEventNew, "ownerId">>
+
 export interface ISharedCalendarService {
     getSharedEvents(userId: number, params: {
         status?: InviteStatus;
         limit?: number;
         offset?: number;
     }): Promise<SharedEventsWithPagination>;
-    createSharedEvent(params: {
-        ownerId: number,
-        title: string,
-        reminders: number[],
-        idealDays: number[],
-        idealTimeRange: { start: string, end: string },
-        invites: string[],
-        duration: number
-    }): Promise<SharedEventResp>;
-    updateSharedEvent(eventId: number, ownerId: number, params: {
-        title?: string,
-        reminders?: number[],
-        idealDays?: number[],
-        idealTimeRange?: { start: string, end: string },
-        invites?: string[],
-        duration?: number
-    }): Promise<SharedEventResp>;
+    createSharedEvent(params: SharedEventNew): Promise<SharedEventResp>;
+    updateSharedEvent(eventId: number, ownerId: number, params: Partial<SharedEventEdit>): Promise<SharedEventResp>;
     deleteSharedEvent(eventId: number, ownerId: number): Promise<void>;
     acceptInvite(eventId: number, userId: number): Promise<void>;
     rejectInvite(eventId: number, userId: number): Promise<void>;
@@ -209,14 +206,7 @@ export class SharedCalendarService implements ISharedCalendarService {
         return transformSharedEventResp(owner.id, savedEvent);
     }
 
-    async updateSharedEvent(eventId: number, ownerId: number, newEventRaw: Partial<{
-        title: string,
-        reminders: number[],
-        idealDays: number[],
-        idealTimeRange: { start: string, end: string },
-        invites: string[],
-        duration: number
-    }>): Promise<SharedEventResp> {
+    async updateSharedEvent(eventId: number, ownerId: number, newEventRaw: Partial<SharedEventEdit>): Promise<SharedEventResp> {
         const originalEvent = await this._sharedEvent.findOne({
             where: { id: eventId, owner: { id: ownerId } },
             relations: ["members", "invites", "owner"]
