@@ -4,6 +4,7 @@ import { expressjwt, Request as JWTRequest } from "express-jwt";
 import { body, query, validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { JWTPayload } from "./calendar/index.js";
+import { fcmTokenSchema } from "./schema/user.schema.js";
 
 export function createUserRouter(userService: IUserService) {
     const router = Router();
@@ -69,6 +70,67 @@ export function createUserRouter(userService: IUserService) {
                 res.status(400).send({ message: "Invalid token." });
             }
         }
-    )
+    );
+
+    router.post("/user/fcm",
+        fcmTokenSchema,
+        expressjwt({ 
+            secret: process.env.APP_JWT_SECRET!, 
+            algorithms: ["HS256"]
+        }),
+        async (req: JWTRequest<JWTPayload>, res) => {
+            const valResult = validationResult(req);
+            if (!valResult.isEmpty()) {
+                res.status(400).send({ message: valResult.array()[0].msg });
+                return;
+            }
+            if (!req.auth || !req.auth.id) {
+                res.sendStatus(401);
+                return;
+            }
+            try {
+                const result = await userService.addFCMToken(req.auth.id, req.body.token, req.body.deviceName);
+                res.send(result);
+            } catch (error) {
+                const msg = (error as Error).message;
+                res.status(400).send({ message: msg });
+            }
+        }
+    );
+
+    router.get("/user/fcm",
+        expressjwt({ 
+            secret: process.env.APP_JWT_SECRET!, 
+            algorithms: ["HS256"]
+        }),
+        async (req: JWTRequest<JWTPayload>, res) => {
+            if (!req.auth || !req.auth.id) {
+                res.sendStatus(401);
+                return;
+            }
+            const tokens = await userService.listFCMTokens(req.auth.id);
+            res.send(tokens);
+        }
+    );
+
+    router.delete("/user/fcm/:id",
+        expressjwt({ 
+            secret: process.env.APP_JWT_SECRET!, 
+            algorithms: ["HS256"]
+        }),
+        async (req: JWTRequest<JWTPayload>, res) => {
+            if (!req.auth || !req.auth.id) {
+                res.sendStatus(401);
+                return;
+            }
+            const success = await userService.deleteFCMToken(req.auth.id, req.params.id);
+            if (success) {
+                res.sendStatus(200);
+            } else {
+                res.status(404).send({ message: "FCM token not found" });
+            }
+        }
+    );
+
     return router;
 }

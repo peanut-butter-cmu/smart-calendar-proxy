@@ -5,6 +5,7 @@ import { UserTransaction } from "./transaction.js";
 import { User } from "../../models/user.entity.js";
 import { CalendarTransaction } from "../calendar/transaction.js";
 import { MangoClient } from "../../client/mango.js";
+import { Session } from "../../models/session.entity.js";
 
 export enum GroupTitle {
     CMU = "CMU",
@@ -28,6 +29,9 @@ export interface IUserService {
     auth(cred: LoginInfo): Promise<JWTPayload | null>;
     userInfo(userId: number): Promise<UserInfo | null>;
     updateMangoToken(userId: number, token: string): Promise<boolean>;
+    addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: string, deviceName: string}>;
+    listFCMTokens(userId: number): Promise<{id: string, deviceName: string}[]>;
+    deleteFCMToken(userId: number, tokenId: string): Promise<boolean>;
 }
 
 export class UserService implements IUserService {
@@ -109,5 +113,46 @@ export class UserService implements IUserService {
         user.mangoToken = token;
         const result = await this._ds.manager.save(user);
         return result !== null;
+    }
+
+    public async addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: string, deviceName: string}> {
+        const user = await this._ds.manager.findOneBy(User, { id: userId });
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Check if user has less than 10 tokens
+        const existingTokens = await this._ds.manager.count(Session, { where: { owner: { id: userId } } });
+        if (existingTokens >= 10) {
+            throw new Error("Maximum number of FCM tokens reached (10)");
+        }
+
+        const session = this._ds.manager.create(Session, {
+            fcmToken: token,
+            deviceName: deviceName,
+            owner: user
+        });
+
+        const savedSession = await this._ds.manager.save(session);
+        return {
+            id: savedSession.id,
+            deviceName: savedSession.deviceName
+        };
+    }
+
+    public async listFCMTokens(userId: number): Promise<{id: string, deviceName: string}[]> {
+        const sessions = await this._ds.manager.find(Session, {
+            where: { owner: { id: userId } },
+            select: ["id", "deviceName"]
+        });
+        return sessions;
+    }
+
+    public async deleteFCMToken(userId: number, tokenId: string): Promise<boolean> {
+        const result = await this._ds.manager.delete(Session, {
+            id: tokenId,
+            owner: { id: userId }
+        });
+        return result.affected === 1;
     }
 }

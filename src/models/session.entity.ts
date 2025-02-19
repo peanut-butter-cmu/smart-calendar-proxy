@@ -8,6 +8,9 @@ export class Session {
 
     @Column()
     public fcmToken: string;
+
+    @Column()
+    public deviceName: string;
     
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     public created: Date;
