@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany, Index, CreateDateColumn, UpdateDateColumn, OneToMany, JoinTable } from "typeorm";
-import { CalendarEvent } from "./calendarEvent.entity.js";
-import { User } from "./user.entity.js";
-import { ReminderOptions } from "./calendarEventGroup.entity.js";
-import { SharedEventInvite } from "./sharedEventInvite.entity.js";
+import { CalendarEvent } from "./CalendarEvent.entity.js";
+import { User } from "./User.entity.js";
+import { ReminderOptions } from "./EventGroup.entity.js";
+import { SharedEventInvite } from "./SharedEventInvite.entity.js";
 
 export enum SharedEventStatus {
     PENDING = "pending",

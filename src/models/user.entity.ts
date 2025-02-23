@@ -1,9 +1,9 @@
 import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn, Relation, Index, UpdateDateColumn, BeforeInsert, BeforeUpdate } from "typeorm";
-import { CalendarEvent } from "./calendarEvent.entity.js";
-import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
-import { Course } from "./course.entity.js";
-import { Session } from "./session.entity.js";
-import { Notification } from "./notification.entity.js";
+import { CalendarEvent } from "./CalendarEvent.entity.js";
+import { CalendarEventGroup } from "./EventGroup.entity.js";
+import { Course } from "./Course.entity.js";
+import { Session } from "./Session.entity.js";
+import { Notification } from "./Notification.entity.js";
 import * as crypto from 'crypto';
 
 @Entity()
@@ -46,6 +46,7 @@ export class User {
     public sessions: Relation<Session[]>;
 
     @Column()
+    @Index()
     public CMUUsername: string;
 
     @Column({ select: false })

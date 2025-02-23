@@ -1,4 +1,4 @@
-import { CalendarEvent } from "../models/calendarEvent.entity.js";
+import { CalendarEvent } from "../models/CalendarEvent.entity.js";
 import { IFetcher } from "./base.js";
 
 export class MangoFetcher implements IFetcher {

@@ -1,8 +1,8 @@
-import { NotificationType } from '../../models/notification.entity.js';
+import { NotificationType } from '../../models/Notification.entity.js';
 import { NotificationDeliveryType, NotificationTemplate } from './types.js';
 
 export const templates: Record<NotificationType, Record<NotificationDeliveryType, NotificationTemplate>> = {
-    [NotificationType.GROUP_INVITE]: {
+    [NotificationType.EVENT_INVITE]: {
         in_app: {
             title: 'New Group Invite',
             body: 'You have been invited to join {{eventName}}'
