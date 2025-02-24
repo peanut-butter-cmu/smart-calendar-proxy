@@ -26,7 +26,12 @@ export class SharedEvent {
     public idealDays: number[];
 
     @Column("jsonb")
-    public idealTimeRange: { start: string, end: string };
+    public idealTimeRange: { 
+        startDate: Date;
+        endDate: Date; 
+        dailyStartMin: number;
+        dailyEndMin: number;
+    };
 
     @Column({
         type: "enum",
