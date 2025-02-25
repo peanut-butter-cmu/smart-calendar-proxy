@@ -58,6 +58,12 @@ export class SharedEvent {
     @JoinTable()
     public events: Relation<CalendarEvent[]>;
 
+    @Column("jsonb", { nullable: true })
+    public repeat: { 
+        type: "weekly" | "monthly";
+        count: number;
+    };
+
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     public createdAt: Date;
 

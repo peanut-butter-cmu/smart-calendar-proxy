@@ -18,7 +18,7 @@ function createNotificationRouter(dataSource: DataSource) {
         validationReport,
         notificationController.getNotifications
     );
-    app.patch("/notifications/:id/read",
+    app.patch("/notification/:id/read",
         authorizationValidate,
         authorizationReport,
         param("id").isNumeric(),
@@ -30,7 +30,7 @@ function createNotificationRouter(dataSource: DataSource) {
         authorizationReport,
         notificationController.readAllNotifications
     );
-    app.delete("/notifications/:id",
+    app.delete("/notification/:id",
         authorizationValidate,
         authorizationReport,
         param("id").isNumeric().withMessage("`id` must be number."),

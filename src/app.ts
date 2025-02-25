@@ -25,7 +25,7 @@ app.use(express.json());
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 dataSource.initialize().then(async initializedDS => {
-    initCronJobs();
+    initCronJobs(initializedDS);
     app.use(createRouter(initializedDS));
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);

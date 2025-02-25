@@ -5,9 +5,7 @@ import { NotificationService } from "./notification.service.js";
 import { NotificationType } from "../models/Notification.entity.js";
 import { User } from "../models/User.entity.js";
 import * as swagger from "../types/swagger.js";
-import { fSharedEvent } from "../helpers/formatter.js";
-
-const CMU_EMAIL_DOMAIN = "@cmu.ac.th";
+import { fCMUEmail, fSharedEvent } from "../helpers/formatter.js";
 
 export class SharedCalendarService {
     private _shared: Repository<SharedEvent>;
@@ -27,7 +25,7 @@ export class SharedCalendarService {
         const [events, total] = await this._shared.findAndCount({
             where: [
                 { status: Not(SharedEventStatus.DELETED), owner: { id: ownerId } }, 
-                { status: Not(SharedEventStatus.DELETED), invites: { email: this._formatCMUEmail(user.CMUUsername) } },
+                { status: Not(SharedEventStatus.DELETED), invites: { email: fCMUEmail(user.CMUUsername) } },
             ],
             relations: ["invites", "members", "events", "owner"],
             take: params.limit,
@@ -51,7 +49,7 @@ export class SharedCalendarService {
         const event = await this._shared.findOne({
             where: [
                 { id: eventId, status: Not(SharedEventStatus.DELETED), owner: { id: ownerId } }, 
-                { id: eventId, status: Not(SharedEventStatus.DELETED), invites: { email: this._formatCMUEmail(user.CMUUsername) } },
+                { id: eventId, status: Not(SharedEventStatus.DELETED), invites: { email: fCMUEmail(user.CMUUsername) } },
             ],
             relations: ["invites", "members", "events", "owner"],
             order: { id: "DESC" }
@@ -59,10 +57,6 @@ export class SharedCalendarService {
         if (!event)
             throw new Error("Event not found.");
         return fSharedEvent(event);
-    }
-
-    private _formatCMUEmail(username: string): string {
-        return `${username}${CMU_EMAIL_DOMAIN}`;
     }
 
     async addSharedEvent(ownerId: number, params: {
@@ -81,7 +75,7 @@ export class SharedCalendarService {
         const user = await this._user.findOneBy({ id: ownerId });
         if (!user)
             throw new Error("User not found.");
-        if (params.invites.some(email => this._formatCMUEmail(user.CMUUsername) === email))
+        if (params.invites.some(email => fCMUEmail(user.CMUUsername) === email))
             throw new Error("Cannot invite owner into thier own event.");
         const savedEvent = await this._shared.save(
             this._shared.create({
@@ -102,15 +96,16 @@ export class SharedCalendarService {
                 email
             })
         )));
-        await this._notificationService.notifyByEmails(params.invites, {
-            type: NotificationType.EVENT_INVITE,
-            eventId: savedEvent.id
-        });
+        await this._notificationService.notifyByEmails(
+            params.invites,
+            NotificationType.EVENT_CREATED,
+            { eventId: savedEvent.id }
+        );
         return fSharedEvent(savedEvent);
     }
 
     async editSharedEventByID(ownerId: number, id: number, params: swagger.SharedEventEdit): Promise<swagger.SharedEvent> {
-        [ownerId, id, params];
+        console.log([ownerId, id, params]);
         throw new Error("Not implemented");
     }
 
@@ -128,11 +123,9 @@ export class SharedCalendarService {
             status: SharedEventStatus.DELETED
         });
         await this._notificationService.notifyByEmails(
-            event.members.map(member => this._formatCMUEmail(member.CMUUsername)),
-            {
-                type: NotificationType.EVENT_DELETED,
-                eventId: event.id
-            }
+            event.members.map(member => member.CMUUsername),
+            NotificationType.EVENT_DELETED,
+            { eventId: event.id }
         )
     }
 
@@ -140,7 +133,7 @@ export class SharedCalendarService {
         const user = await this._user.findOneBy({ id: userId });
         if (!user)
             throw new Error("User not found.");
-        const email = this._formatCMUEmail(user.CMUUsername);
+        const email = fCMUEmail(user.CMUUsername);
         const event = await this._shared.findOne({
             where: {
                 id: eventId, 
@@ -163,10 +156,11 @@ export class SharedCalendarService {
             event.members.push(user);
             await this._shared.save(event);
         }
-        await this._notificationService.notifyByIDs([event.owner.id], {
-            type: InviteStatus.ACCEPTED ? NotificationType.INVITE_ACCEPTED : NotificationType.INVITE_REJECTED,
-            email: this._formatCMUEmail(user.CMUUsername)
-        });
+        await this._notificationService.notifyByIDs(
+            [event.owner.id],
+            InviteStatus.ACCEPTED ? NotificationType.INVITE_ACCEPTED : NotificationType.INVITE_REJECTED,
+            { email: fCMUEmail(user.CMUUsername) }
+        );
     }
 
     async acceptSharedEventByID(ownerId: number, eventId: number): Promise<void> {
@@ -178,7 +172,7 @@ export class SharedCalendarService {
     }
 
     async arrangeSharedEventByID(ownerId: number, eventId: number): Promise<swagger.SharedEvent> {
-        [ownerId, eventId];
+        console.log([ownerId, eventId]);
         throw new Error("Not implemented.");
     }
 }

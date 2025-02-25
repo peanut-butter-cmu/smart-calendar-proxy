@@ -4,4 +4,4 @@ export type JWTPayload = {
     id: number;
 };
 
-export type JWTRequest<Param = {}, Query = {}, Body = {}> = Request<Param, any, Body, Query> & { auth: JWTPayload; };
+export type JWTRequest<Param = object, Query = object, Body = object> = Request<Param, object, Body, Query> & { auth: JWTPayload; };
