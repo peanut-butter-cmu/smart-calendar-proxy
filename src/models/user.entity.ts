@@ -45,7 +45,7 @@ export class User {
     @OneToMany(() => Session, (session) => session.owner, { cascade: true })
     public sessions: Relation<Session[]>;
 
-    @Column()
+    @Column({ unique: true })
     @Index()
     public CMUUsername: string;
 
@@ -83,6 +83,6 @@ export class User {
         return decrypted;
     }
 
-    @OneToMany(() => Notification, (notification) => notification.user, { cascade: true })
+    @OneToMany(() => Notification, (notification) => notification.owner, { cascade: true })
     public notifications: Relation<Notification[]>;
 }

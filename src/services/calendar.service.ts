@@ -12,7 +12,7 @@ export class CalendarService {
         this._group = ds.getRepository(EventGroup);
     }
 
-    async addEvent(ownerId: number, event: swagger.CalendarEventNew): Promise<swagger.CalendarEvent> {
+    async addEvent(ownerId: number, event: swagger.CalendarEventNew, params: { readOnly?: boolean } = {}): Promise<swagger.CalendarEvent> {
         if (event.start > event.end)
             throw new Error("Event end before it start.");
         const ownerGroup = await this._group.findOneBy({ 
@@ -25,7 +25,8 @@ export class CalendarService {
         const newEventUnsaved = this._event.create({
             ...event,
             owner: { id: ownerId },
-            groups: [ownerGroup]
+            groups: [ownerGroup],
+            readOnly: params.readOnly === true
         });
         const newEvent = await this._event.save(newEventUnsaved);
         return fCalendarEvent(newEvent);
@@ -49,7 +50,8 @@ export class CalendarService {
             throw new Error("Event end before it start.");
         const originalEvent = await this._event.findOne({ 
             where: { 
-                id: eventId, 
+                id: eventId,
+                readOnly: false,
                 owner: { id: ownerId }
             },
             relations: ["groups"]
@@ -62,7 +64,8 @@ export class CalendarService {
 
     async deleteEventByID(ownerId: number, eventId: number): Promise<void> {
         const event = await this._event.findOneBy({
-             id: eventId, 
+             id: eventId,
+             readOnly: false,
              owner: { id: ownerId } 
         });
         if (!event)
@@ -109,5 +112,19 @@ export class CalendarService {
             throw new Error("Group not found.");
         const modifiedGroup = await this._group.save({...originalGroup, ...updatedGroup});
         return fEventGroup(modifiedGroup);
+    }
+
+    async getNotifiableEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
+        return await this._event
+            .createQueryBuilder("event")
+            .innerJoin("event.groups", "grp")
+            .leftJoinAndSelect("event.owner", "owner")
+            .where("grp.reminders <> '{}'")
+            .andWhere(`EXISTS (
+                SELECT 1
+                FROM unnest(grp.reminders) AS reminder_minutes
+                WHERE (event.start - (reminder_minutes * interval '1 minute')) BETWEEN :start AND :end
+            )`, { start, end })
+            .getMany();
     }
 }

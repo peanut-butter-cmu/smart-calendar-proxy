@@ -23,6 +23,7 @@ export type LoginInfo = { username: string; password: string; };
 
 export class UserService {
     private _ds: DataSource;
+    
     constructor(dataSource: DataSource) {
         this._ds = dataSource;
     }
