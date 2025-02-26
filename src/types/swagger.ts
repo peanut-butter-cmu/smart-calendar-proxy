@@ -1,4 +1,4 @@
-import { EventGroupType } from "../models/eventGroup.entity.js";
+import { EventGroupType } from "../models/EventGroup.entity.js";
 import { SharedEventStatus } from "../models/sharedEvent.entity.js";
 import { InviteStatus } from "../models/sharedEventInvite.entity.js";
 

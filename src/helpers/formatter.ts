@@ -1,6 +1,6 @@
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
 import { SharedEvent } from "../models/sharedEvent.entity.js";
-import { CalendarEventGroup } from "../models/eventGroup.entity.js";
+import { CalendarEventGroup } from "../models/EventGroup.entity.js";
 import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
 import { JWTPayload } from "../types/global.js";

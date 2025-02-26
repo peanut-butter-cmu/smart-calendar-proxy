@@ -1,4 +1,4 @@
-import { ReminderOptions } from "../../models/eventGroup.entity.js";
+import { ReminderOptions } from "../../models/EventGroup.entity.js";
 import { checkSchema } from "express-validator";
 
 function noExtraFields(fields: string[]) {

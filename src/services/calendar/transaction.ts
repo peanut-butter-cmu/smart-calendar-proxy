@@ -4,7 +4,7 @@ import { EntityManager, QueryRunner } from "typeorm";
 import { GroupTitle } from "../user.service.js";
 import { createStartEndInRegDate, getDefaultBusy, getDefaultColor, getDefaultPriority, getDefaultReminders } from "../../helpers/calendar.js";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
-import { CalendarEventGroup, EventGroupType } from "../../models/eventGroup.entity.js";
+import { CalendarEventGroup, EventGroupType } from "../../models/EventGroup.entity.js";
 import { User } from "../../models/user.entity.js";
 
 export class CalendarTransaction {

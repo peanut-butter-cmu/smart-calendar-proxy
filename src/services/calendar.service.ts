@@ -1,6 +1,6 @@
 import { Between, DataSource, Repository } from "typeorm";
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
-import { CalendarEventGroup as EventGroup, EventGroupType } from "../models/eventGroup.entity.js";
+import { CalendarEventGroup as EventGroup, EventGroupType } from "../models/EventGroup.entity.js";
 import { fCalendarEvent, fEventGroup } from "../helpers/formatter.js";
 import * as swagger from "../types/swagger.js";
 
