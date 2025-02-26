@@ -19,7 +19,8 @@ export class CalendarController {
         res: Response<swagger.EventGroup[] | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.getGroupsByOwner(req.auth.id));
+            const result = await this._service.getGroupsByOwner(req.auth.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -30,7 +31,8 @@ export class CalendarController {
         res: Response<swagger.EventGroup | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.getGroupByOwner(req.auth.id, req.params.id));
+            const result = await this._service.getGroupByOwner(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -41,7 +43,8 @@ export class CalendarController {
         res: Response<swagger.EventGroup | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.editGroupByOwner(req.auth.id, req.params.id, req.body));
+            const result = await this._service.editGroupByOwner(req.auth.id, req.params.id, req.body);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -52,10 +55,11 @@ export class CalendarController {
         res: Response<swagger.Pagination<swagger.CalendarEvent> | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.getEventsByOwner(req.auth.id, {
+            const result = await this._service.getEventsByOwner(req.auth.id, {
                 ...req.query,
-                ...createPaginationParam("calendar", req.query)
-            }));
+                ...createPaginationParam(req.query)
+            });
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -66,7 +70,8 @@ export class CalendarController {
         res: Response<swagger.CalendarEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.getEventByOwner(req.auth.id, req.params.id));
+            const result = await this._service.getEventByOwner(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -77,7 +82,8 @@ export class CalendarController {
         res: Response<swagger.CalendarEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.addEvent(req.auth.id, req.body));
+            const result = await this._service.addEvent(req.auth.id, req.body);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -88,9 +94,10 @@ export class CalendarController {
         res: Response<swagger.CalendarEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.editEventByID(
+            const result = await this._service.editEventByID(
                 req.auth.id, req.params.id, req.body
-            ));
+            );
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -101,9 +108,10 @@ export class CalendarController {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.deleteEventByID(
+            const result = await this._service.deleteEventByID(
                 req.auth.id, req.params.id
-            ));
+            );
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -114,9 +122,10 @@ export class CalendarController {
         res: Response<swagger.Pagination<swagger.SharedEvent> | swagger.Error>
     ) => {
         try {
-            res.send((await this._servicea.getSharedEventsByOwner(req.auth.id, {
-                ...createPaginationParam("sharedEvents", req.query)
-            })));
+            const result = await this._servicea.getSharedEventsByOwner(req.auth.id, {
+                ...createPaginationParam(req.query)
+            });
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -127,7 +136,8 @@ export class CalendarController {
         res: Response<swagger.SharedEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.getSharedEventByID(req.auth.id, req.params.id));
+            const result = await this._servicea.getSharedEventByID(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -138,7 +148,8 @@ export class CalendarController {
         res: Response<swagger.SharedEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.addSharedEvent(req.auth.id, req.body));
+            const result = await this._servicea.addSharedEvent(req.auth.id, req.body);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -149,7 +160,8 @@ export class CalendarController {
         res: Response<swagger.SharedEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.editSharedEventByID(req.auth.id, req.params.id, req.body));
+            const result = await this._servicea.editSharedEventByID(req.auth.id, req.params.id, req.body);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -160,7 +172,8 @@ export class CalendarController {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.deleteSharedEventByID(req.auth.id, req.params.id));
+            const result = await this._servicea.deleteSharedEventByID(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -171,7 +184,8 @@ export class CalendarController {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.acceptSharedEventByID(req.auth.id, req.params.id));
+            const result = await this._servicea.acceptSharedEventByID(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -182,7 +196,8 @@ export class CalendarController {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.rejectSharedEventByID(req.auth.id, req.params.id));
+            const result = await this._servicea.rejectSharedEventByID(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -193,7 +208,8 @@ export class CalendarController {
         res: Response<swagger.SharedEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._servicea.arrangeSharedEventByID(req.auth.id, req.params.id));
+            const result = await this._servicea.arrangeSharedEventByID(req.auth.id, req.params.id);
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }

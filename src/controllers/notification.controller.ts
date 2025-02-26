@@ -16,13 +16,14 @@ class NotificationContrller {
         res: Response<swagger.Pagination<swagger.Notification> | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.getNotificationsByOwner(
+            const result = await this._service.getNotificationsByOwner(
                 req.auth.id,
                 {
                     unreadOnly: req.query.unreadOnly && req.query.unreadOnly === "true",
-                    ...createPaginationParam("notifications", req.query)
+                    ...createPaginationParam(req.query)
                 }
-            ));
+            );
+            res.send(result);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -33,10 +34,15 @@ class NotificationContrller {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._service.markAsRead(
+            const success = await this._service.markAsRead(
                 req.params.id,
                 req.auth.id
-            ) ? res.sendStatus(200) : res.sendStatus(404);
+            );
+            if (!success) {
+                res.sendStatus(404);
+                return;
+            }
+            res.sendStatus(200);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -47,8 +53,12 @@ class NotificationContrller {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._service.markAllAsRead(req.auth.id)
-            ? res.sendStatus(200) : res.sendStatus(404);
+            const success = await this._service.markAllAsRead(req.auth.id);
+            if (!success) {
+                res.sendStatus(404);
+                return;
+            }
+            res.sendStatus(200);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -59,10 +69,15 @@ class NotificationContrller {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._service.deleteNotification(
+            const success = await this._service.deleteNotification(
                 req.params.id,
                 req.auth.id
-            ) ? res.sendStatus(200) : res.sendStatus(404);
+            );
+            if (!success) {
+                res.sendStatus(404);
+                return;
+            }
+            res.sendStatus(200);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }

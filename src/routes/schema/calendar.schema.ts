@@ -39,23 +39,17 @@ const eventNewSchema = checkSchema({
     title: {
         in: "body",
         isString: true,
-        errorMessage: "`title` must string.",
         isLength: {
-            options: { 
-                min: 1, max: 32,
-            },
-            errorMessage: "`title` must have length between 1 - 32."
+            options: { min: 1, max: 32 }
         }
     },
     start: {
         in: "body",
-        isISO8601: true,
-        errorMessage: "`start` must be valid ISO-8601 format."
+        isISO8601: true
     },
     end: {
         in: "body",
-        isISO8601: true,
-        errorMessage: "`end` must be valid ISO-8601 format."
+        isISO8601: true
     },
     "*": {
         in: "body",
@@ -84,10 +78,18 @@ const eventEditSchema = checkSchema({
         optional: true,
         isISO8601: true,
     },
+    groups: {
+        in: "body",
+        optional: true,
+        isArray: true,
+        custom: {
+            options: (vals: any[]) => (vals.length >= 1 && vals.every(Number.isSafeInteger))
+        }
+    },
     "*": {
         in: "body",
         custom: {
-            options: noExtraFields([ "title", "start", "end" ])
+            options: noExtraFields([ "title", "start", "end", "groups" ])
         }
     }
 });
@@ -130,31 +132,6 @@ const groupEditSchema = checkSchema({
     }
 });
 
-const idealTimeRangeValidator = (val: any) => {
-    const keys = Object.keys(val);
-    if (keys.length !== 4 || !keys.includes("startDate") || !keys.includes("endDate") || 
-        !keys.includes("dailyStartMin") || !keys.includes("dailyEndMin"))
-        throw new Error("`idealTimeRange` must and only have `startDate`, `endDate`, `dailyStartMin` and `dailyEndMin`.");
-    const obj = val as { startDate: any, endDate: any, dailyStartMin: any, dailyEndMin: any };
-    if (!isIsoDate(obj.startDate) || !isIsoDate(obj.endDate))
-        throw new Error("`idealTimeRange` contains invalid date.");
-    if (!isFinite(obj.dailyStartMin) || !isFinite(obj.dailyEndMin))
-        throw new Error("`idealTimeRange` contains invalid time.");
-    const dateObj = { 
-        startDate: new Date(obj.startDate), endDate: new Date(obj.endDate), 
-        dailyStartMin: obj.dailyStartMin, dailyEndMin: obj.dailyEndMin
-    };
-    if (dateObj.startDate > dateObj.endDate)
-        throw new Error("`idealTimeRange` contains `startDate` greater than `endDate`.");
-    if (dateObj.dailyStartMin < 0 || dateObj.dailyEndMin < 0)
-        throw new Error("`idealTimeRange` contains invalid time.");
-    if (dateObj.dailyStartMin > 1440 || dateObj.dailyEndMin > 1440) // 1 day = 1440 min
-        throw new Error("`idealTimeRange` contains time greater than one day.");
-    if (dateObj.dailyStartMin > dateObj.dailyEndMin)
-        throw new Error("`idealTimeRange` contains `dailyStartMin` greater than `dailyEndMin`.");
-    return true;
-}
-
 const sharedNewSchema = checkSchema({
     title: {
         in: "body",
@@ -187,7 +164,20 @@ const sharedNewSchema = checkSchema({
     },
     idealTimeRange: {
         in: "body",
-        custom: { options: idealTimeRangeValidator }
+        custom: {
+            options: (val: any) => {
+                const keys = Object.keys(val);
+                if (keys.length !== 2 || !keys.includes("start") || !keys.includes("end"))
+                    throw new Error("`idealTimeRange` must only have `start` and `stop`.");
+                const obj = val as { start: any, end: any };
+                if (!isIsoDate(obj.start) || !isIsoDate(obj.end))
+                    throw new Error("`idealTimeRange` contains invalid date.");
+                const dateObj = { start: new Date(obj.start), end: new Date(obj.end) };
+                if (dateObj.start > dateObj.end)
+                    throw new Error("`idealTimeRange` contains `start` greater than `end`.");
+                return true;
+            }
+        }
     },
     invites: {
         in: "body",
@@ -200,7 +190,7 @@ const sharedNewSchema = checkSchema({
                 if (!vals.every(e => typeof e === "string"))
                     throw new Error("Each element in `invites` must be string.");
                 if (!vals.every(validateCMUEmail))
-                    throw new Error("Each element in `invites` must a CMU e-mail.");
+                    throw new Error("Each element in `invites` must an e-mail.");
                 if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
                     throw new Error("Each element in `invites` must be unique.");
                 return true;
@@ -273,7 +263,21 @@ const sharedEditSchema = checkSchema({
     idealTimeRange: {
         in: "body",
         optional: true,
-        custom: { options: idealTimeRangeValidator }
+        custom: {
+            options: (val: any) => {
+                const keys = Object.keys(val);
+                if (keys.length !== 4 || !keys.includes("startDate") || !keys.includes("endDate")
+                    || !keys.includes("startTime") || !keys.includes("endTime"))
+                    throw new Error("`idealTimeRange` must only have `startDate`, `endDate` `startTime` and `endTime`.");
+                const obj = val as { startDate: any, endDate: any, startTime: any, endTime: any };
+                if (!isIsoDate(obj.startDate) || !isIsoDate(obj.endDate))
+                    throw new Error("`idealTimeRange` contains invalid date.");
+                const dateObj = { start: new Date(obj.startDate), end: new Date(obj.endDate) };
+                if (dateObj.start > dateObj.end)
+                    throw new Error("`idealTimeRange` contains start greater than end.");
+                return true;
+            }
+        }
     },
     invites: {
         in: "body",
@@ -287,7 +291,7 @@ const sharedEditSchema = checkSchema({
                 if (!vals.every(e => typeof e === "string"))
                     throw new Error("Each element in `invites` must be string.");
                 if (!vals.every(validateCMUEmail))
-                    throw new Error("Each element in `invites` must a CMU e-mail.");
+                    throw new Error("Each element in `invites` must an e-mail.");
                 if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
                     throw new Error("Each element in `invites` must be unique.");
                 return true;

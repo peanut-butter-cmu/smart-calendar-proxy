@@ -13,15 +13,13 @@ export class CalendarService {
     }
 
     async addEvent(ownerId: number, event: swagger.CalendarEventNew): Promise<swagger.CalendarEvent> {
-        if (event.start > event.end)
-            throw new Error("Event end before it start.");
         const ownerGroup = await this._group.findOneBy({ 
             title: "Owner", 
             type: EventGroupType.SYSTEM, 
             owner: { id: ownerId }
         });
         if (!ownerGroup)
-            throw new Error("Owner group not found.");
+            throw new Error("Owner group not found.")
         const newEventUnsaved = this._event.create({
             ...event,
             owner: { id: ownerId },
@@ -45,8 +43,6 @@ export class CalendarService {
     }
 
     async editEventByID(ownerId: number, eventId: number, newEvent: swagger.CalendarEventEdit): Promise<swagger.CalendarEvent> {
-        if (newEvent.start > newEvent.end)
-            throw new Error("Event end before it start.");
         const originalEvent = await this._event.findOne({ 
             where: { 
                 id: eventId, 
@@ -55,8 +51,11 @@ export class CalendarService {
             relations: ["groups"]
         });
         if (!originalEvent)
-            throw new Error("Event not found.");
-        const modifiedEvent = await this._event.save({...originalEvent, ...newEvent});
+            throw new Error("Event not found.")
+        const groups = await this._group.findBy(newEvent.groups.map(id => ({ id, owner: { id: ownerId } })));
+        if (!groups.length)
+            throw new Error("Group(s) not found.")
+        const modifiedEvent = await this._event.save({...originalEvent, ...newEvent, groups});
         return fCalendarEvent(modifiedEvent);
     }
 
@@ -86,7 +85,8 @@ export class CalendarService {
             pagination: {
                 total, 
                 limit: params.limit, 
-                offset: params.offset
+                offset: params.offset,
+                hasMore: params.offset + params.limit < total
             }
         };
     }

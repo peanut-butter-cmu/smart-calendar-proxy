@@ -55,7 +55,8 @@ export class NotificationService {
             pagination: {
                 total: total,
                 limit: params.limit,
-                offset: params.offset
+                offset: params.offset,
+                hasMore: (params.limit - params.offset) < total 
             }
         };
     }

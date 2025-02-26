@@ -14,6 +14,7 @@ export type Pagination<T, U extends string = PaginationKey<T>> = {
         total: number;
         limit: number;
         offset: number;
+        hasMore: boolean;
     }
 };
 
@@ -41,6 +42,7 @@ export type CalendarEventEdit = Partial<{
     title: string;
     start: Date;
     end: Date;
+    groups: number[];
 }>;
 
 export type EventGroup = {
@@ -69,12 +71,7 @@ export type SharedEvent = {
     duration: number;
     reminders: number[];
     idealDays: number[];
-    idealTimeRange: {
-        startDate: Date;
-        endDate: Date;
-        dailyStartMin: number;
-        dailyEndMin: number;
-    };
+    idealTimeRange: { start: string; end: string };
     members: {
         givenName: string;
         middleName: string | null;
@@ -98,12 +95,7 @@ export type SharedEventNew = {
     duration: number;
     reminders: number[];
     idealDays: number[];
-    idealTimeRange: { 
-        startDate: Date; 
-        endDate: Date; 
-        dailyStartMin: number; 
-        dailyEndMin: number 
-    };
+    idealTimeRange: { start: string; end: string };
     members: {
         givenName: string;
         middleName: string | null;
