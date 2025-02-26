@@ -3,20 +3,16 @@ import { Notification, NotificationType } from "../models/Notification.entity.js
 import * as swagger from "../types/swagger.js";
 import { fCMUUsername, fNotification } from "../helpers/formatter.js";
 import { User } from "../models/User.entity.js";
-import { getMessaging } from "firebase-admin/messaging";
-import { Session } from "../models/Session.entity.js";
 
 export type Message = {eventId: number } | { email: string };
 
 export class NotificationService {
     private _notification: Repository<Notification>;
     private _user: Repository<User>;
-    private _session: Repository<Session>;
 
     constructor(dataSource: DataSource) {
         this._notification = dataSource.getRepository(Notification);
         this._user = dataSource.getRepository(User);
-        this._session = dataSource.getRepository(Session);
     }
 
     async notifyByEmails(emails: string[], type: NotificationType, message: Message) {
@@ -38,23 +34,6 @@ export class NotificationService {
             data: message
         })));
         await this._notification.save(notifications);
-    }
-
-    async notifyFirebaseByUsers(users: User[], type: NotificationType, message: Message) {
-        const msging = getMessaging();
-        const sessions = await this._session
-            .createQueryBuilder("session")
-            .leftJoinAndSelect("session.owner", "owner")
-            .where("owner.id IN (:...ids)", { ids: users.map(({id}) => id) })
-            .getMany();
-        if (sessions.length === 0)
-            throw new Error("No session available.");
-        await msging.sendEach(sessions.map(session => ({
-            data: {
-                title: "I Love You"
-            },
-            token: session.fcmToken
-        })));
     }
 
     async getNotificationsByOwner(

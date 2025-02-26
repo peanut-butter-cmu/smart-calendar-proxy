@@ -8,8 +8,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat.js";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
 import cors from "cors";
-import { initCronJobs } from "./app/cron.js";
-import { initFirebase } from "./app/firebase.js";
+import { initCronJobs } from "./cron/index.js";
 
 configDotenv({ path: ".env" });
 dayjs.extend(customParseFormat);
@@ -26,7 +25,6 @@ app.use(express.json());
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 dataSource.initialize().then(async initializedDS => {
-    initFirebase();
     initCronJobs(initializedDS);
     app.use(createRouter(initializedDS));
     app.listen(port, () => {
