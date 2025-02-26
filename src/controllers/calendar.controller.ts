@@ -37,7 +37,7 @@ export class CalendarController {
     }
 
     editGroup = async (
-        req: JWTRequest<{ id: number }, object, swagger.EventGroupEdit>,
+        req: JWTRequest<{ id: number }, {}, swagger.EventGroupEdit>,
         res: Response<swagger.EventGroup | swagger.Error>
     ) => {
         try {
@@ -48,7 +48,7 @@ export class CalendarController {
     }
 
     getEvents = async (
-        req: JWTRequest<object, { startDate: Date, endDate: Date } & swagger.PaginationRequest>,
+        req: JWTRequest<{}, { startDate: Date, endDate: Date } & swagger.PaginationRequest>,
         res: Response<swagger.Pagination<swagger.CalendarEvent> | swagger.Error>
     ) => {
         try {
@@ -73,7 +73,7 @@ export class CalendarController {
     }
 
     addEvent = async (
-        req: JWTRequest<object, object, swagger.CalendarEventNew>,
+        req: JWTRequest<{}, {}, swagger.CalendarEventNew>,
         res: Response<swagger.CalendarEvent | swagger.Error>
     ) => {
         try {
@@ -84,7 +84,7 @@ export class CalendarController {
     }
 
     editEvent = async (
-        req: JWTRequest<{ id: number }, object, swagger.CalendarEventEdit>,
+        req: JWTRequest<{ id: number }, {}, swagger.CalendarEventEdit>,
         res: Response<swagger.CalendarEvent | swagger.Error>
     ) => {
         try {
@@ -110,7 +110,7 @@ export class CalendarController {
     }
 
     getSharedEvents = async (
-        req: JWTRequest<object, swagger.PaginationRequest>,
+        req: JWTRequest<{}, swagger.PaginationRequest>,
         res: Response<swagger.Pagination<swagger.SharedEvent> | swagger.Error>
     ) => {
         try {
@@ -134,7 +134,7 @@ export class CalendarController {
     }
 
     addSharedEvent = async (
-        req: JWTRequest<object, object, swagger.SharedEventNew>,
+        req: JWTRequest<{}, {}, swagger.SharedEventNew>,
         res: Response<swagger.SharedEvent | swagger.Error>
     ) => {
         try {
@@ -145,7 +145,7 @@ export class CalendarController {
     }
 
     editSharedEvent = async (
-        req: JWTRequest<{ id: number }, object, swagger.SharedEventEdit>,
+        req: JWTRequest<{ id: number }, {}, swagger.SharedEventEdit>,
         res: Response<swagger.SharedEvent | swagger.Error>
     ) => {
         try {

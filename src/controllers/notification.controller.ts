@@ -12,7 +12,7 @@ class NotificationContrller {
     }
 
     getNotifications = async (
-        req: JWTRequest<object, { unreadOnly?: string } & swagger.PaginationRequest>,
+        req: JWTRequest<{}, { unreadOnly?: string } & swagger.PaginationRequest>,
         res: Response<swagger.Pagination<swagger.Notification> | swagger.Error>
     ) => {
         try {
@@ -33,10 +33,12 @@ class NotificationContrller {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._service.markAsRead(req.params.id, req.auth.id);
-            res.sendStatus(200);
+            await this._service.markAsRead(
+                req.params.id,
+                req.auth.id
+            ) ? res.sendStatus(200) : res.sendStatus(404);
         } catch (error) {
-            res.status(404).send({ message: (error as Error).message });
+            res.status(400).send({ message: (error as Error).message });
         }
     }
 
@@ -45,8 +47,8 @@ class NotificationContrller {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._service.markAllAsRead(req.auth.id);
-            res.sendStatus(200);
+            await this._service.markAllAsRead(req.auth.id)
+            ? res.sendStatus(200) : res.sendStatus(404);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -57,10 +59,10 @@ class NotificationContrller {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            if (await this._service.deleteNotification(req.params.id, req.auth.id))
-                res.sendStatus(200)
-            else
-                res.sendStatus(404)
+            await this._service.deleteNotification(
+                req.params.id,
+                req.auth.id
+            ) ? res.sendStatus(200) : res.sendStatus(404);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }

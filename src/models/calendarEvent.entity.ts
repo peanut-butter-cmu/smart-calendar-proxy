@@ -16,7 +16,7 @@ export class CalendarEvent {
     public start: Date;
 
     @Column({ type: 'timestamp' })
-    @Check(`"end" >= "start"`)
+    @Check(`"end" > "start"`)
     @Index()
     public end: Date;
 
@@ -29,9 +29,6 @@ export class CalendarEvent {
     @ManyToMany(() => CalendarEventGroup, group => group.events, { onDelete: 'CASCADE' })
     @JoinTable()
     public groups: Relation<CalendarEventGroup[]>;
-
-    @Column({ default: false })
-    public readOnly: boolean;
 
     @ManyToOne(() => User, user => user.events, { onDelete: 'CASCADE' })
     @Index()

@@ -41,7 +41,7 @@ export class AxiosRegClient implements IRegClient {
         const $ = cheerio.load(resp.data);
         const $rows = $("table.table.table-bordered.table-striped.sortable tr");
         return $rows
-            .filter((i) => !(i < 2 || i > $rows.length - 2)) // ignore 2 first rows and 1 last row
+            .filter((i, _) => !(i < 2 || i > $rows.length - 2)) // ignore 2 first rows and 1 last row
             .map((_, row) => {
                 function get_col_txt(idx: number) {
                     return $(row)

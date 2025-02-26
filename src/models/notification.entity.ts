@@ -1,13 +1,15 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
 import { User } from "./User.entity.js";
+import { NotificationDeliveryType, NotificationStatus } from "../services/notification/types.js";
 
 export enum NotificationType {
-    EVENT_CREATED = "event_created",
-    MEETING_SCHEDULED = "event_scheduled",
-    EVENT_DELETED = "event_deleted",
-    INVITE_ACCEPTED = "invite_accepted",
-    INVITE_REJECTED = "invite_rejected",
-    EVENT_REMINDER = "event_reminder"
+    EVENT_INVITE = 'group_invite',
+    INVITE_ACCEPTED = 'invite_accepted',
+    INVITE_REJECTED = 'invite_rejected',
+    MEMBER_ADDED = 'member_added',
+    MEMBER_REMOVED = 'member_removed',
+    MEETING_SCHEDULED = 'meeting_scheduled',
+    EVENT_DELETED = 'event_deleted'
 }
 
 @Entity()
@@ -17,18 +19,50 @@ export class Notification {
 
     @ManyToOne(() => User)
     @Index()
-    owner: Relation<User>;
+    user: Relation<User>;
 
-    @Column({ type: "enum", enum: NotificationType })
+    @Column({
+        type: 'enum',
+        enum: NotificationType
+    })
     type: NotificationType;
 
-    @Column("jsonb")
+    @Column('jsonb')
     data: {
-        // For event
         eventId?: number;
+        eventName?: string;
+        inviteToken?: string;
+        meetingId?: number;
+        meetingTime?: string;
+        memberEmail?: string;
+    };
 
-        // For invites
-        email?: string;
+    @Column({
+        type: 'enum',
+        enum: NotificationDeliveryType,
+        default: NotificationDeliveryType.IN_APP
+    })
+    deliveryType: NotificationDeliveryType;
+
+    @Column({ nullable: true })
+    scheduledFor: Date;
+
+    @Column({
+        type: 'enum',
+        enum: NotificationStatus,
+        default: NotificationStatus.PENDING
+    })
+    status: NotificationStatus;
+
+    @Column({ default: 0 })
+    retryCount: number;
+
+    @Column({ type: 'jsonb', nullable: true })
+    deliveryMetadata: {
+        emailTo?: string;
+        fcmToken?: string;
+        lastAttempt?: Date;
+        errorMessage?: string;
     };
 
     @Column({ default: false })

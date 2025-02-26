@@ -42,7 +42,7 @@ export class RegCMUFetcher {
         this._cred = cred;
     }
 
-    public async validate(): Promise<boolean> {
+    public async validate(): Promise<Boolean> {
         try {
             await this._oauth.login(this._cred);
             return true;

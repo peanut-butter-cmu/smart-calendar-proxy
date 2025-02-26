@@ -88,10 +88,6 @@ export type SharedEvent = {
         createdAt: Date;
     }[];
     events: CalendarEvent[];
-    repeat?: {
-        type: "weekly" | "monthly";
-        count: number;
-    }
     createdAt: Date;
     updatedAt: Date;
 };
@@ -116,10 +112,6 @@ export type SharedEventNew = {
     }[];
     invites: string[];
     events: CalendarEvent[];
-    repeat?: {
-        type: "weekly" | "monthly",
-        count: number
-    };
 };
 
 export type SharedEventEdit = Partial<{
@@ -128,17 +120,8 @@ export type SharedEventEdit = Partial<{
     duration: number;
     reminders: number[];
     idealDays: number[];
-    idealTimeRange: { 
-        startDate: Date; 
-        endDate: Date; 
-        dailyStartMin: number; 
-        dailyEndMin: number 
-    };
+    idealTimeRange: { start: string; end: string };
     invites: string[];
-    repeat?: {
-        type: "weekly" | "monthly",
-        count: number
-    };
 }>;
 
 export type JWT = string;
@@ -151,23 +134,21 @@ export type User = {
 };
 
 export enum NotificationType {
-    EVENT_CREATED = "event_created",
-    EVENT_SCHEDULED = "event_scheduled",
+    EVENT_INVITE = "event_invite",
+    MEETING_SCHEDULED = "meeting_scheduled",
     EVENT_DELETED = "event_deleted",
     INVITE_ACCEPTED = "invite_accepted",
-    INVITE_REJECTED = "invite_rejected",
-    EVENT_REMINDER = "event_reminder"
+    INVITE_REJECTED = "invite_rejected"
 };
 
 export type Notification = {
     id: number;
-    read: boolean;
+    isRead: boolean;
     createdAt: Date;
 } & (
-    | { type: NotificationType.EVENT_CREATED, data: { eventId: number } }
-    | { type: NotificationType.EVENT_SCHEDULED, data: { eventId: number } }
+    | { type: NotificationType.EVENT_INVITE, data: { eventId: number } }
+    | { type: NotificationType.MEETING_SCHEDULED, data: { eventId: number } }
     | { type: NotificationType.EVENT_DELETED, data: { eventId: number } }
-    | { type: NotificationType.EVENT_REMINDER, data: { eventId: number } }
     | { type: NotificationType.INVITE_ACCEPTED, data: { email: string } }
     | { type: NotificationType.INVITE_REJECTED, data: { email: string } }
 );

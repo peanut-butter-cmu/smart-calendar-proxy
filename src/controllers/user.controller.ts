@@ -1,8 +1,9 @@
+import { Request as JWTRequest } from "express-jwt";
 import jwt from "jsonwebtoken";
 import { DataSource } from "typeorm";
 import { fUser } from "../helpers/formatter.js";
 import { Request, Response } from "express";
-import { JWTRequest } from "../types/global.js";
+import { JWTPayload } from "../types/global.js";
 import { UserService } from "../services/user.service.js";
 import * as swagger from "../types/swagger.js";
 
@@ -13,7 +14,7 @@ export class UserController {
     }
 
     authenticate = async (
-        req: Request<object, object, { username: string; password: string; }>, 
+        req: Request<{}, {}, { username: string; password: string; }>, 
         res: Response<string | swagger.Error>
     ) => {
         try {
@@ -30,7 +31,7 @@ export class UserController {
     }
 
     getUser = async (
-        req: JWTRequest,
+        req: JWTRequest<JWTPayload>,
         res: Response<swagger.User | swagger.Error>
     ) => {
         try {
@@ -42,7 +43,7 @@ export class UserController {
     }
 
     editMangoToken = async (
-        req: JWTRequest<object, { token: string }>,
+        req: JWTRequest<JWTPayload>,
         res: Response<void | swagger.Error>
     ) => {
         try {
@@ -56,7 +57,7 @@ export class UserController {
     }
 
     addFCMToken = async (
-        req: JWTRequest<object, object, swagger.FCMTokenNew>,
+        req: Request<{}, {}, swagger.FCMTokenNew> & { auth: JWTPayload },
         res: Response<swagger.FCMToken | swagger.Error>
     ) => {
         try {
@@ -69,7 +70,7 @@ export class UserController {
     }
 
     getFCMTokens = async (
-        req: JWTRequest,
+        req: JWTRequest<JWTPayload>,
         res: Response<swagger.FCMToken[] | swagger.Error>
     ) => {
         try {
@@ -80,7 +81,7 @@ export class UserController {
     }
 
     deleteFCMToken = async (
-        req: JWTRequest<{id: string}>,
+        req: Request<{id: string}, {}, {}> & { auth: JWTPayload },
         res: Response<void | swagger.Error>
     ) => {
         try {

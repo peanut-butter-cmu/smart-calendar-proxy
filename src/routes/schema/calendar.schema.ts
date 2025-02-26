@@ -9,7 +9,7 @@ function noExtraFields(fields: string[]) {
     }
 }
 
-function remindersValidate(vals: unknown) {
+function remindersValidate(vals: any) {
     if (!Array.isArray(vals))
         throw new Error("`reminders` must be array.");
     if (!vals.every(Number.isSafeInteger))
@@ -130,26 +130,19 @@ const groupEditSchema = checkSchema({
     }
 });
 
-const idealTimeRangeValidator = (val: unknown) => {
+const idealTimeRangeValidator = (val: any) => {
     const keys = Object.keys(val);
     if (keys.length !== 4 || !keys.includes("startDate") || !keys.includes("endDate") || 
         !keys.includes("dailyStartMin") || !keys.includes("dailyEndMin"))
         throw new Error("`idealTimeRange` must and only have `startDate`, `endDate`, `dailyStartMin` and `dailyEndMin`.");
-    const obj = val as { startDate: unknown, endDate: unknown, dailyStartMin: unknown, dailyEndMin: unknown };
-    function failIfKeyNotType(keys: string[], type: "string" | "number") {
-        for (const key of keys.filter(key => typeof obj[key] !== type))
-            throw new Error(`\`${key}\` must be a ${type}`);
-    }
-    failIfKeyNotType(["startDate", "endDate"], "string");
-    failIfKeyNotType(["dailyStartMin", "dailyEndMin"], "number");
-    const typedObj = val as { startDate: string, endDate: string, dailyStartMin: number, dailyEndMin: number };
-    if (!isIsoDate(typedObj.startDate) || !isIsoDate(typedObj.endDate))
+    const obj = val as { startDate: any, endDate: any, dailyStartMin: any, dailyEndMin: any };
+    if (!isIsoDate(obj.startDate) || !isIsoDate(obj.endDate))
         throw new Error("`idealTimeRange` contains invalid date.");
-    if (!isFinite(typedObj.dailyStartMin) || !isFinite(typedObj.dailyEndMin))
+    if (!isFinite(obj.dailyStartMin) || !isFinite(obj.dailyEndMin))
         throw new Error("`idealTimeRange` contains invalid time.");
     const dateObj = { 
-        startDate: new Date(typedObj.startDate), endDate: new Date(typedObj.endDate), 
-        dailyStartMin: obj.dailyStartMin as number, dailyEndMin: obj.dailyEndMin as number
+        startDate: new Date(obj.startDate), endDate: new Date(obj.endDate), 
+        dailyStartMin: obj.dailyStartMin, dailyEndMin: obj.dailyEndMin
     };
     if (dateObj.startDate > dateObj.endDate)
         throw new Error("`idealTimeRange` contains `startDate` greater than `endDate`.");
@@ -159,19 +152,6 @@ const idealTimeRangeValidator = (val: unknown) => {
         throw new Error("`idealTimeRange` contains time greater than one day.");
     if (dateObj.dailyStartMin > dateObj.dailyEndMin)
         throw new Error("`idealTimeRange` contains `dailyStartMin` greater than `dailyEndMin`.");
-    return true;
-}
-
-const idealDaysValidator = (vals: unknown[]) => {
-    if (!Array.isArray(vals))
-        throw new Error("`idealDays` must be array.");
-    if (!vals.every(Number.isSafeInteger))
-        throw new Error("Each element in `idealDays` must be number.");
-    const numVals = vals as number[];
-    if (!numVals.every((num) => num >= 0 && num <= 6))
-        throw new Error("Each element in `idealDays` must be valid JS day.");
-    if (!numVals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
-        throw new Error("Each element in `idealDays` must be unique.");
     return true;
 }
 
@@ -192,7 +172,17 @@ const sharedNewSchema = checkSchema({
     idealDays: {
         in: "body",
         custom: {
-            options: idealDaysValidator,
+            options: (vals: any[]) => {
+                if (!Array.isArray(vals))
+                    throw new Error("`idealDays` must be array.");
+                if (!vals.every(Number.isSafeInteger))
+                    throw new Error("Each element in `idealDays` must be number.");
+                if (!vals.every((num) => num >= 0 && num <= 6))
+                    throw new Error("Each element in `idealDays` must be valid JS day.");
+                if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
+                    throw new Error("Each element in `idealDays` must be unique.");
+                return true;
+            }
         }
     },
     idealTimeRange: {
@@ -202,7 +192,7 @@ const sharedNewSchema = checkSchema({
     invites: {
         in: "body",
         custom: {
-            options: (vals: unknown[]) => {
+            options: (vals: any[]) => {
                 if (!Array.isArray(vals))
                     throw new Error("`invites` must be array.");
                 if (vals.length < 1 || vals.length > 16)
@@ -231,31 +221,11 @@ const sharedNewSchema = checkSchema({
             }
         }
     },
-    repeat: {
-        in: "body",
-        optional: true,
-        custom: {
-            options: (val: unknown) => {
-                const k = Object.keys(val);
-                if (k.length !== 2 || !k.includes("type") || !k.includes("count"))
-                    throw new Error("`duration` must contain only `type` and `count`.");
-                const obj = val as { type: unknown, count: unknown };
-                if (!["weekly", "monthly"].includes(`${obj.type}`))
-                    throw new Error("`type` must be \"weekly\" or \"monthly\".");
-                if (Number.isFinite(obj.count))
-                    throw new Error("`count` must be number.");
-                const typedObj = val as { type: "weekly" | "monthly", count: number };
-                if (typedObj.count < 1 || typedObj.count > 8)
-                    throw new Error("`count` must in range between 1 to 8.");
-                return true;
-            }
-        }
-    },
     "*": {
         in: "body",
         custom: {
             options: (_, {path}) => {
-                if (!["title", "reminders", "idealDays", "idealTimeRange", "invites", "duration", "repeat"].includes(path))
+                if (!["title", "reminders", "idealDays", "idealTimeRange", "invites", "duration"].includes(path))
                     throw new Error(`Additional field are not expected (${path}).`);
                 return true;
             }
@@ -287,7 +257,17 @@ const sharedEditSchema = checkSchema({
         in: "body",
         optional: true,
         custom: {
-            options: idealDaysValidator
+            options: (vals: any[]) => {
+                if (!Array.isArray(vals))
+                    throw new Error("`idealDays` must be array.");
+                if (!vals.every(Number.isSafeInteger))
+                    throw new Error("Each element in `idealDays` must be number.");
+                if (!vals.every((num) => num >= 0 && num <= 6))
+                    throw new Error("Each element in `idealDays` must be valid JS day.");
+                if (!vals.every((num, idx) => vals.indexOf(num) === idx)) // https://stackoverflow.com/a/9229821
+                    throw new Error("Each element in `idealDays` must be unique.");
+                return true;
+            }
         }
     },
     idealTimeRange: {
@@ -299,7 +279,7 @@ const sharedEditSchema = checkSchema({
         in: "body",
         optional: true,
         custom: {
-            options: (vals: unknown[]) => {
+            options: (vals: any[]) => {
                 if (!Array.isArray(vals))
                     throw new Error("`invites` must be array.");
                 if (vals.length < 1 || vals.length > 16)
@@ -322,19 +302,11 @@ const sharedEditSchema = checkSchema({
         },
         errorMessage: "`duration` must be a positive integer representing minutes."
     },
-    repeat: {
-        in: "body",
-        optional: true,
-        isInt: {
-            options: { min: 1, max: 8 }
-        },
-        errorMessage: "`repeat` must be in range between 1 to 8."
-    },
     "*": {
         in: "body",
         custom: {
             options: (_, {path}) => {
-                if (!["title", "reminders", "idealDays", "idealTimeRange", "invites", "duration", "repeat"].includes(path))
+                if (!["title", "reminders", "idealDays", "idealTimeRange", "invites", "duration"].includes(path))
                     throw new Error(`Additional field are not expected (${path}).`);
                 return true;
             }
