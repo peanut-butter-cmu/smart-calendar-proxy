@@ -6,7 +6,7 @@ export class Session {
     @PrimaryGeneratedColumn()
     public id: number;
 
-    @Column()
+    @Column({ unique: true })
     public fcmToken: string;
 
     @Column()

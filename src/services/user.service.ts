@@ -23,7 +23,7 @@ export type LoginInfo = { username: string; password: string; };
 
 export class UserService {
     private _ds: DataSource;
-    
+
     constructor(dataSource: DataSource) {
         this._ds = dataSource;
     }
@@ -78,12 +78,14 @@ export class UserService {
         await calendarTrans.generateFinalExamEvent(courses, courseGroups);
         return fJWTPayload(user);
     }
+
     public async getUserById(userId: number): Promise<User> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
             throw new Error("User not found.");
         return user;
     }
+
     public async updateMangoToken(userId: number, token: string): Promise<void> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
@@ -95,6 +97,7 @@ export class UserService {
             mangoToken: token
         });
     }
+
     public async addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: number, deviceName: string, createdAt: Date}> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
@@ -114,6 +117,7 @@ export class UserService {
             createdAt: savedSession.created
         };
     }
+
     public async listFCMTokens(userId: number): Promise<{id: number, deviceName: string, createdAt: Date}[]> {
         const sessions = await this._ds.manager.find(Session, {
             where: { owner: { id: userId } },
@@ -125,6 +129,7 @@ export class UserService {
             createdAt: session.created
         }));
     }
+
     public async deleteFCMToken(userId: number, tokenId: string): Promise<void> {
         const result = await this._ds.manager.delete(Session, {
             id: tokenId,
@@ -132,5 +137,9 @@ export class UserService {
         });
         if (result.affected !== 1)
             throw new Error("Unable to delete given FCM token.");
+    }
+
+    public async getAllUsers(): Promise<User[]> {
+        return await this._ds.getRepository(User).find({});
     }
 }
