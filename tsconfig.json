@@ -1,7 +1,10 @@
 {
     "extends": "@tsconfig/node22/tsconfig.json",
     "compilerOptions": {
-        "baseUrl": "./src",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"]
+        },
         "outDir": "./dist",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
@@ -10,5 +13,9 @@
         "types": ["node", "jest"],
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true
-    }
+    },
+    "include": [
+        "src",
+        "tests"
+    ]
 }

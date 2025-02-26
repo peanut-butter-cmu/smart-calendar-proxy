@@ -1,4 +1,4 @@
-import { Notification } from '../../models/Notification.entity.js';
+import { Notification } from '../../models/notification.entity.js';
 import { templates } from './templates.js';
 import { NotificationDeliveryType, NotificationStatus } from './types.js';
 

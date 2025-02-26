@@ -1,9 +1,9 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
-import { User } from "./User.entity.js";
+import { User } from "./user.entity.js";
 import { NotificationDeliveryType, NotificationStatus } from "../services/notification/types.js";
 
 export enum NotificationType {
-    EVENT_INVITE = 'group_invite',
+    GROUP_INVITE = 'group_invite',
     INVITE_ACCEPTED = 'invite_accepted',
     INVITE_REJECTED = 'invite_rejected',
     MEMBER_ADDED = 'member_added',

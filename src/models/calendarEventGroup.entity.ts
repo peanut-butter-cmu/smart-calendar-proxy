@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany, Index } from "typeorm";
-import { CalendarEvent } from "./CalendarEvent.entity.js";
-import { User } from "./User.entity.js";
+import { CalendarEvent } from "./calendarEvent.entity.js";
+import { User } from "./user.entity.js";
 
 export enum EventGroupType {
     SYSTEM = "system",

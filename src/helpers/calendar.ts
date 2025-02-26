@@ -1,5 +1,5 @@
-import { Priority } from "../models/EventGroup.entity.js";
-import { GroupTitle } from "../services/user.service.js";
+import { Priority } from "../models/calendarEventGroup.entity.js";
+import { GroupTitle } from "../services/user/index.js";
 import dayjs from "dayjs";
 
 export function createStartEndInRegDate(date: Date, startSec: number, endSec: number) {  

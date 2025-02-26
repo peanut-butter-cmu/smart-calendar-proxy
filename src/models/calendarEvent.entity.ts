@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn, Check, Index } from "typeorm";
-import { User } from "./User.entity.js";
-import { CalendarEventGroup } from "./EventGroup.entity.js";
+import { User } from "./user.entity.js";
+import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
 
 @Entity()
 export class CalendarEvent {

@@ -1,8 +1,9 @@
 import { CourseInfo, StudentInfo } from "../../fetcher/reg-cmu.js";
-import { User } from "../../models/User.entity.js";
+import { User } from "../../models/user.entity.js";
+import { JWTPayload } from "../../routes/calendar/index.js";
 import { EntityManager, QueryRunner } from "typeorm";
-import { LoginInfo } from "../user.service.js";
-import { Course } from "../../models/Course.entity.js";
+import { LoginInfo } from "./index.js";
+import { Course } from "../../models/course.entity.js";
 
 export class UserTransaction {
     private _manager: EntityManager;
@@ -74,9 +75,11 @@ export class UserTransaction {
         await this._manager.save(this._user);
     }
 
-    public async finalize(): Promise<User> {
+    public async finalize(): Promise<JWTPayload | null> {
         if (!this._user)
             throw new Error(`Unable to ${this._name}.`);
-        return this._user;
+        return {
+            id: this._user.id
+        }
     }
 }

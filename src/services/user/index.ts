@@ -1,12 +1,11 @@
 import { DataSource, QueryRunner } from "typeorm";
-import { RegCMUFetcher, StudentInfo } from "../fetcher/reg-cmu.js";
-import { JWTPayload } from "../types/global.js";
-import { UserTransaction } from "./user/transaction.js";
-import { User } from "../models/User.entity.js";
-import { CalendarTransaction } from "./calendar/transaction.js";
-import { MangoClient } from "../client/mango.js";
-import { Session } from "../models/Session.entity.js";
-import { fJWTPayload } from "../helpers/formatter.js";
+import { RegCMUFetcher, StudentInfo } from "../../fetcher/reg-cmu.js";
+import { JWTPayload } from "../../routes/calendar/index.js";
+import { UserTransaction } from "./transaction.js";
+import { User } from "../../models/user.entity.js";
+import { CalendarTransaction } from "../calendar/transaction.js";
+import { MangoClient } from "../../client/mango.js";
+import { Session } from "../../models/session.entity.js";
 
 export enum GroupTitle {
     CMU = "CMU",
@@ -18,10 +17,24 @@ export enum GroupTitle {
     HOLIDAY = "Holiday",
     OWNER = "Owner"
 }
-
 export type LoginInfo = { username: string; password: string; };
+export type UserInfo = {
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    studentNo: number;
+}
 
-export class UserService {
+export interface IUserService {
+    auth(cred: LoginInfo): Promise<JWTPayload | null>;
+    userInfo(userId: number): Promise<UserInfo | null>;
+    updateMangoToken(userId: number, token: string): Promise<boolean>;
+    addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: string, deviceName: string}>;
+    listFCMTokens(userId: number): Promise<{id: string, deviceName: string}[]>;
+    deleteFCMToken(userId: number, tokenId: string): Promise<boolean>;
+}
+
+export class UserService implements IUserService {
     private _ds: DataSource;
     constructor(dataSource: DataSource) {
         this._ds = dataSource;
@@ -56,7 +69,7 @@ export class UserService {
     private static async _signIn(queryRunner: QueryRunner, { studentNo }: StudentInfo): Promise<JWTPayload> {
         const signInTrans = new UserTransaction("sign in", queryRunner);
         await signInTrans.initByStudentNo(studentNo);
-        return fJWTPayload(await signInTrans.finalize());
+        return signInTrans.finalize();
     }
 
     private static async _signUp(
@@ -69,67 +82,77 @@ export class UserService {
         const signUpTrans = new UserTransaction("sign up", queryRunner);
         await signUpTrans.initByStudentInfo(student, cred);
         await signUpTrans.updateCourses(courses);
-        const user = await signUpTrans.finalize();
-        const calendarTrans = new CalendarTransaction(queryRunner, user);
+        const authToken = await signUpTrans.finalize();
+        const calendarTrans = new CalendarTransaction(queryRunner, authToken.id);
         const courseGroups = await calendarTrans.generateDefaultGroup(courses);
         await calendarTrans.generateClassEvent(courses, courseGroups);
         await calendarTrans.generateMidtermExamEvent(courses, courseGroups);
         await calendarTrans.generateFinalExamEvent(courses, courseGroups);
-        return fJWTPayload(user);
+        return authToken;
     }
-    public async getUserById(userId: number): Promise<User> {
+
+    public async userInfo(userId: number): Promise<UserInfo | null> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
-            throw new Error("User not found.");
-        return user;
+            return null;
+        return {
+            firstName: user.givenName,
+            middleName: user.middleName,
+            lastName: user.familyName,
+            studentNo: user.studentNo
+        }
     }
-    public async updateMangoToken(userId: number, token: string): Promise<void> {
+
+    public async updateMangoToken(userId: number, token: string): Promise<boolean> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
         if (!user)
-            throw new Error("User not found.");
+            return false;
         const mango = new MangoClient(token);
         if (!(await mango.validate()))
-            throw new Error("Invalid mango token.");
-        await this._ds.manager.save({
-            mangoToken: token
-        });
+            return false;
+        user.mangoToken = token;
+        const result = await this._ds.manager.save(user);
+        return result !== null;
     }
-    public async addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: number, deviceName: string, createdAt: Date}> {
+
+    public async addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: string, deviceName: string}> {
         const user = await this._ds.manager.findOneBy(User, { id: userId });
-        if (!user)
+        if (!user) {
             throw new Error("User not found");
+        }
+
+        // Check if user has less than 10 tokens
         const existingTokens = await this._ds.manager.count(Session, { where: { owner: { id: userId } } });
-        if (existingTokens >= 10)
+        if (existingTokens >= 10) {
             throw new Error("Maximum number of FCM tokens reached (10)");
+        }
+
         const session = this._ds.manager.create(Session, {
             fcmToken: token,
             deviceName: deviceName,
             owner: user
         });
+
         const savedSession = await this._ds.manager.save(session);
         return {
             id: savedSession.id,
-            deviceName: savedSession.deviceName,
-            createdAt: savedSession.created
+            deviceName: savedSession.deviceName
         };
     }
-    public async listFCMTokens(userId: number): Promise<{id: number, deviceName: string, createdAt: Date}[]> {
+
+    public async listFCMTokens(userId: number): Promise<{id: string, deviceName: string}[]> {
         const sessions = await this._ds.manager.find(Session, {
             where: { owner: { id: userId } },
             select: ["id", "deviceName"]
         });
-        return sessions.map(session => ({
-            id: session.id,
-            deviceName: session.deviceName,
-            createdAt: session.created
-        }));
+        return sessions;
     }
-    public async deleteFCMToken(userId: number, tokenId: string): Promise<void> {
+
+    public async deleteFCMToken(userId: number, tokenId: string): Promise<boolean> {
         const result = await this._ds.manager.delete(Session, {
             id: tokenId,
             owner: { id: userId }
         });
-        if (result.affected !== 1)
-            throw new Error("Unable to delete given FCM token.");
+        return result.affected === 1;
     }
 }

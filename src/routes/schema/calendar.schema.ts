@@ -1,4 +1,4 @@
-import { ReminderOptions } from "../../models/EventGroup.entity.js";
+import { ReminderOptions } from "../../models/calendarEventGroup.entity.js";
 import { checkSchema } from "express-validator";
 
 function noExtraFields(fields: string[]) {
@@ -24,7 +24,7 @@ function remindersValidate(vals: any) {
 function isIsoDate(str: string) {
     if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/.test(str)) return false;
     const d = new Date(str); 
-    return !isNaN(d.getTime()) && d.toISOString() === str; // valid date 
+    return !isNaN(d.getTime()) && d.toISOString()===str; // valid date 
 }
 
 function validateCMUEmail(email: string) {
@@ -95,10 +95,6 @@ const eventEditSchema = checkSchema({
 });
 
 const groupEditSchema = checkSchema({
-    id: {
-        in: "params",
-        isNumeric: true
-    },
     color: {
         in: "body",
         optional: true,
@@ -185,8 +181,6 @@ const sharedNewSchema = checkSchema({
             options: (vals: any[]) => {
                 if (!Array.isArray(vals))
                     throw new Error("`invites` must be array.");
-                if (vals.length < 1 || vals.length > 16)
-                    throw new Error("`invites` must have length between 1 to 16.");
                 if (!vals.every(e => typeof e === "string"))
                     throw new Error("Each element in `invites` must be string.");
                 if (!vals.every(validateCMUEmail))
@@ -200,16 +194,9 @@ const sharedNewSchema = checkSchema({
     duration: {
         in: "body",
         isInt: {
-            options: { min: 30, max: 8 * 60 },
-            errorMessage: "`duration` must be a positive integer representing minutes between 30 - 480."
+            options: { min: 30, max: 8 * 60 }
         },
-        custom: {
-            options: (val: number) => {
-                if (val % 30 !== 0)
-                    throw new Error("`duration` must divisible by 30.");
-                return true;
-            }
-        }
+        errorMessage: "`duration` must be a positive integer representing minutes."
     },
     "*": {
         in: "body",
@@ -266,15 +253,14 @@ const sharedEditSchema = checkSchema({
         custom: {
             options: (val: any) => {
                 const keys = Object.keys(val);
-                if (keys.length !== 4 || !keys.includes("startDate") || !keys.includes("endDate")
-                    || !keys.includes("startTime") || !keys.includes("endTime"))
-                    throw new Error("`idealTimeRange` must only have `startDate`, `endDate` `startTime` and `endTime`.");
-                const obj = val as { startDate: any, endDate: any, startTime: any, endTime: any };
-                if (!isIsoDate(obj.startDate) || !isIsoDate(obj.endDate))
+                if (keys.length !== 2 || !keys.includes("start") || !keys.includes("end"))
+                    throw new Error("`idealTimeRange` must only have `start` and `stop`.");
+                const obj = val as { start: any, end: any };
+                if (!isIsoDate(obj.start) || !isIsoDate(obj.end))
                     throw new Error("`idealTimeRange` contains invalid date.");
-                const dateObj = { start: new Date(obj.startDate), end: new Date(obj.endDate) };
+                const dateObj = { start: new Date(obj.start), end: new Date(obj.end) };
                 if (dateObj.start > dateObj.end)
-                    throw new Error("`idealTimeRange` contains start greater than end.");
+                    throw new Error("`idealTimeRange` contains `start` greater than `end`.");
                 return true;
             }
         }
@@ -286,8 +272,6 @@ const sharedEditSchema = checkSchema({
             options: (vals: any[]) => {
                 if (!Array.isArray(vals))
                     throw new Error("`invites` must be array.");
-                if (vals.length < 1 || vals.length > 16)
-                    throw new Error("`invites` must have length between 1 to 16.");
                 if (!vals.every(e => typeof e === "string"))
                     throw new Error("Each element in `invites` must be string.");
                 if (!vals.every(validateCMUEmail))

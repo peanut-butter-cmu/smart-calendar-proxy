@@ -2,7 +2,7 @@ import { AxiosRegClient } from "../client/reg-cmu/axios.js";
 import { IRegClient } from "../client/reg-cmu/base.js";
 import { CMUOAuth, createCMUAxios } from "../helpers/reg-cmu.js";
 import { AxiosOAuthClient } from "../client/oauth-cmu/axios.js";
-import { LoginInfo } from "../services/user.service.js";
+import { LoginInfo } from "../services/user/index.js";
 
 export type StudentInfo = {
     givenName: string,
