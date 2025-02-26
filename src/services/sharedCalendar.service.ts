@@ -39,8 +39,7 @@ export class SharedCalendarService {
             pagination: {
                 total,
                 limit: params.limit,
-                offset: params.offset,
-                hasMore: params.offset + params.limit < events.length
+                offset: params.offset
             }
         };
     }
@@ -57,6 +56,8 @@ export class SharedCalendarService {
             relations: ["invites", "members", "events", "owner"],
             order: { id: "DESC" }
         });
+        if (!event)
+            throw new Error("Event not found.");
         return fSharedEvent(event);
     }
 
@@ -65,15 +66,23 @@ export class SharedCalendarService {
     }
 
     async addSharedEvent(ownerId: number, params: {
-        title: string,
-        reminders: number[],
-        idealDays: number[],
-        idealTimeRange: { start: string, end: string },
-        invites: string[],
+        title: string;
+        reminders: number[];
+        idealDays: number[];
+        idealTimeRange: { 
+            startDate: Date;
+            endDate: Date;
+            dailyStartMin: number;
+            dailyEndMin: number;
+        },
+        invites: string[];
         duration: number
     }): Promise<swagger.SharedEvent> {
         const user = await this._user.findOneBy({ id: ownerId });
-        if (!user) throw new Error("User not found.");
+        if (!user)
+            throw new Error("User not found.");
+        if (params.invites.some(email => this._formatCMUEmail(user.CMUUsername) === email))
+            throw new Error("Cannot invite owner into thier own event.");
         const savedEvent = await this._shared.save(
             this._shared.create({
                 owner: { id: ownerId },
