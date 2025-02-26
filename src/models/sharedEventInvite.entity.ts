@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
-import { SharedEvent } from "./sharedEvent.entity.js";
+import { SharedEvent } from "./SharedEvent.entity.js";
 
 export enum InviteStatus {
     PENDING = 'pending',

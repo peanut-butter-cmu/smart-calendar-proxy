@@ -1,5 +1,5 @@
 import { Entity, PrimaryColumn, Column, Relation, ManyToMany, CreateDateColumn, UpdateDateColumn, Check, Index } from "typeorm";
-import { User } from "./user.entity.js";
+import { User } from "./User.entity.js";
 
 @Entity()
 export class Course {
