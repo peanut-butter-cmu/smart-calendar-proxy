@@ -2,10 +2,10 @@ import { DataSource, QueryRunner } from "typeorm";
 import { RegCMUFetcher, StudentInfo } from "../fetcher/reg-cmu.js";
 import { JWTPayload } from "../types/global.js";
 import { UserTransaction } from "./user/transaction.js";
-import { User } from "../models/User.entity.js";
+import { User } from "../models/user.entity.js";
 import { CalendarTransaction } from "./calendar/transaction.js";
 import { MangoClient } from "../client/mango.js";
-import { Session } from "../models/Session.entity.js";
+import { Session } from "../models/session.entity.js";
 import { fJWTPayload } from "../helpers/formatter.js";
 
 export enum GroupTitle {

@@ -1,6 +1,6 @@
-import { EventGroupType } from "../models/EventGroup.entity.js";
-import { SharedEventStatus } from "../models/SharedEvent.entity.js";
-import { InviteStatus } from "../models/SharedEventInvite.entity.js";
+import { EventGroupType } from "../models/eventGroup.entity.js";
+import { SharedEventStatus } from "../models/sharedEvent.entity.js";
+import { InviteStatus } from "../models/sharedEventInvite.entity.js";
 
 export type PaginationKey<T> = 
     T extends CalendarEvent ? "calendar" : 

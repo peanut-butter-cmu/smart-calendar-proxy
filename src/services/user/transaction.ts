@@ -1,8 +1,8 @@
 import { CourseInfo, StudentInfo } from "../../fetcher/reg-cmu.js";
-import { User } from "../../models/User.entity.js";
+import { User } from "../../models/user.entity.js";
 import { EntityManager, QueryRunner } from "typeorm";
 import { LoginInfo } from "../user.service.js";
-import { Course } from "../../models/Course.entity.js";
+import { Course } from "../../models/course.entity.js";
 
 export class UserTransaction {
     private _manager: EntityManager;

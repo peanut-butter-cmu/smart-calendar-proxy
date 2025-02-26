@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
-import { User } from "./User.entity.js";
+import { User } from "./user.entity.js";
 
 export enum NotificationType {
     EVENT_CREATED = "event_created",

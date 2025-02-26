@@ -1,4 +1,4 @@
-import { Priority } from "../models/EventGroup.entity.js";
+import { Priority } from "../models/eventGroup.entity.js";
 import { GroupTitle } from "../services/user.service.js";
 import dayjs from "dayjs";
 

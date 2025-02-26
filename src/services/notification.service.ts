@@ -1,10 +1,10 @@
 import { DataSource, Repository } from "typeorm";
-import { Notification, NotificationType } from "../models/Notification.entity.js";
+import { Notification, NotificationType } from "../models/notification.entity.js";
 import * as swagger from "../types/swagger.js";
 import { fCMUUsername, fNotification } from "../helpers/formatter.js";
-import { User } from "../models/User.entity.js";
 import { getMessaging } from "firebase-admin/messaging";
-import { Session } from "../models/Session.entity.js";
+import { User } from "../models/user.entity.js";
+import { Session } from "../models/session.entity.js";
 
 export type Message = {eventId: number } | { email: string };
 

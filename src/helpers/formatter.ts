@@ -1,10 +1,10 @@
-import { CalendarEvent } from "../models/CalendarEvent.entity.js";
-import { SharedEvent } from "../models/SharedEvent.entity.js";
-import { CalendarEventGroup } from "../models/EventGroup.entity.js";
-import { User } from "../models/User.entity.js";
+import { CalendarEvent } from "../models/calendarEvent.entity.js";
+import { SharedEvent } from "../models/sharedEvent.entity.js";
+import { CalendarEventGroup } from "../models/eventGroup.entity.js";
+import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
 import { JWTPayload } from "../types/global.js";
-import { Notification, NotificationType } from "../models/Notification.entity.js";
+import { Notification, NotificationType } from "../models/notification.entity.js";
 
 export function fCalendarEvent(event: CalendarEvent): swagger.CalendarEvent {
     return {

@@ -4,7 +4,7 @@ import cron from "node-cron";
 import { DataSource } from "typeorm";
 import { CalendarService } from "../services/calendar.service.js";
 import { NotificationService } from "../services/notification.service.js";
-import { NotificationType } from "../models/Notification.entity.js";
+import { NotificationType } from "../models/notification.entity.js";
 import { UserService } from "../services/user.service.js";
 
 export function initCronJobs(ds: DataSource) {

@@ -1,9 +1,9 @@
 import { DataSource, Not, Repository } from "typeorm";
-import { SharedEvent, SharedEventStatus } from "../models/SharedEvent.entity.js";
-import { SharedEventInvite, InviteStatus } from "../models/SharedEventInvite.entity.js";
+import { SharedEvent, SharedEventStatus } from "../models/sharedEvent.entity.js";
+import { SharedEventInvite, InviteStatus } from "../models/sharedEventInvite.entity.js";
 import { NotificationService } from "./notification.service.js";
-import { NotificationType } from "../models/Notification.entity.js";
-import { User } from "../models/User.entity.js";
+import { NotificationType } from "../models/notification.entity.js";
+import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
 import { fCMUEmail, fSharedEvent } from "../helpers/formatter.js";
 
