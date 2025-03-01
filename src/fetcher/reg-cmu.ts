@@ -2,7 +2,7 @@ import { AxiosRegClient } from "../client/reg-cmu/axios.js";
 import { IRegClient } from "../client/reg-cmu/base.js";
 import { CMUOAuth, createCMUAxios } from "../helpers/reg-cmu.js";
 import { AxiosOAuthClient } from "../client/oauth-cmu/axios.js";
-import { LoginInfo } from "../services/user/index.js";
+import { LoginInfo } from "../services/user.service.js";
 
 export type StudentInfo = {
     givenName: string,
@@ -42,7 +42,7 @@ export class RegCMUFetcher {
         this._cred = cred;
     }
 
-    public async validate(): Promise<Boolean> {
+    public async validate(): Promise<boolean> {
         try {
             await this._oauth.login(this._cred);
             return true;

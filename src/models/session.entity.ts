@@ -4,10 +4,13 @@ import { User } from "./user.entity.js";
 @Entity()
 export class Session {
     @PrimaryGeneratedColumn()
-    public id: string;
+    public id: number;
+
+    @Column({ unique: true })
+    public fcmToken: string;
 
     @Column()
-    public fcmToken: string;
+    public deviceName: string;
     
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     public created: Date;

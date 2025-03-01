@@ -1,6 +1,6 @@
-import { Priority } from "../models/calendarEventGroup.entity.js";
-import { GroupTitle } from "../services/user/index.js";
+import { Priority, GroupTitle } from "../types/enums.js";
 import dayjs from "dayjs";
+import { CalendarEvent } from "../models/calendarEvent.entity.js";
 
 export function createStartEndInRegDate(date: Date, startSec: number, endSec: number) {  
     function addBy(sec: number) {
@@ -94,4 +94,99 @@ export function getDefaultReminders(title: GroupTitle) {
         case GroupTitle.QUIZ:
             return [30];
     }
+}
+
+type TimeSlot = {
+    start: Date;
+    end: Date;
+};
+
+export function findFreeTimeSlots(
+    date: Date,
+    dailyStartMin: number,
+    dailyEndMin: number,
+    duration: number,
+    busyEvents: CalendarEvent[]
+): TimeSlot {
+    if (dailyStartMin >= dailyEndMin)
+        throw new Error("`dailyEndMin` must not greater or equals `dailyStartMin`.");
+    if (dailyEndMin - dailyStartMin < duration)
+        throw new Error("`duration` is impossible.");
+    const freeMinutes: boolean[] = Array(1_440)
+        .fill(true)
+        .map((v, idx) => v && idx >= dailyStartMin)
+        .map((v, idx) => v && idx <= dailyEndMin);
+    const startOfDay = dayjs(date).startOf("day");
+
+    // Mark busy minutes in freeMinutes array
+    const dayEvents = busyEvents.filter(event => 
+        dayjs(event.start).isSame(date, "day") || 
+        dayjs(event.end).isSame(date, "day")
+    );
+
+    for (const event of dayEvents) {
+        const eventStart = dayjs(event.start);
+        const eventEnd = dayjs(event.end);
+        const startMin = eventStart.hour() * 60 + eventStart.minute();
+        const endMin = eventEnd.hour() * 60 + eventEnd.minute();
+        for (let min = startMin; min <= endMin; min++)
+            freeMinutes[min] = false;
+    }
+
+    let currentSlotStart = -1;
+    for (let min = 0; min < freeMinutes.length; min++) {
+        if (freeMinutes[min]) {
+            if (currentSlotStart === -1)
+                currentSlotStart = min;
+            if (min - currentSlotStart + 1 >= duration)
+                return {
+                    start: startOfDay.add(currentSlotStart, "minute").toDate(),
+                    end: startOfDay.add(min + 1, "minute").toDate()
+                };
+        } else {
+            currentSlotStart = -1;
+        }
+    }
+}
+
+export function findTimeSlotInRange(
+    params: {
+        startDate: Date,
+        endDate: Date,
+        dailyStartMin: number,
+        dailyEndMin: number,
+        duration: number,
+        idealDays: number[],
+        busyEvents: CalendarEvent[],
+        repeat?: {
+            type: "week" | "month",
+            count: number
+        }
+    }
+): TimeSlot[] {
+    let start = dayjs(params.startDate);
+    let end = dayjs(params.endDate);
+    const timeSlots = [];
+    for (let date = dayjs(params.startDate); date.isBefore(end) || date.isSame(end, "day"); date = date.add(1, "day")) {
+        if (!params.idealDays.includes(date.day()))
+            continue;
+        const timeSlot = findFreeTimeSlots(
+            date.toDate(),
+            params.dailyStartMin,
+            params.dailyEndMin,
+            params.duration,
+            params.busyEvents
+        );
+        if (!timeSlot)
+            continue;
+        timeSlots.push(timeSlot);
+        if (params.repeat?.count) {
+            start = start.add(1, params.repeat.type);
+            date = start;
+            end = end.add(1, params.repeat.type);
+        }
+    }
+    if (timeSlots.length !== (params.repeat?.count || 0) + 1)
+        throw new Error("Unable to arange an event in specific time period.")
+    return timeSlots;
 }

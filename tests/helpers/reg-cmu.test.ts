@@ -1,4 +1,4 @@
-import { formatExamDate, courseScheduleDates, formatStartEndSec } from "@/helpers/reg-cmu.js";
+import { courseScheduleDates, formatStartEndSec } from "../../src/helpers/reg-cmu.js";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 

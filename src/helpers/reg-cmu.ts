@@ -1,5 +1,5 @@
 import { IOAuthClient } from "../client/oauth-cmu/base.js";
-import { LoginInfo } from "../services/user/index.js";
+import { LoginInfo } from "../services/user.service.js";
 import axios from "axios";
 import { wrapper } from "axios-cookiejar-support";
 import { eachDayOfInterval } from "date-fns";

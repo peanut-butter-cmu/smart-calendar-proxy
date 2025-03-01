@@ -1,11 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
 import { SharedEvent } from "./sharedEvent.entity.js";
-
-export enum InviteStatus {
-    PENDING = 'pending',
-    ACCEPTED = 'accepted',
-    REJECTED = 'rejected'
-}
+import { InviteStatus } from "../types/enums.js";
 
 @Entity()
 export class SharedEventInvite {
