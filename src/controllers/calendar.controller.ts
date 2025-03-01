@@ -5,6 +5,7 @@ import { JWTRequest } from "../types/global.js";
 import { DataSource } from "typeorm";
 import * as swagger from "../types/swagger.js";
 import { createPaginationParam } from "../helpers/pagination.js";
+import { fCalendarEvent } from "../helpers/formatter.js";
 
 export class CalendarController {
     private _service: CalendarService
@@ -77,7 +78,7 @@ export class CalendarController {
         res: Response<swagger.CalendarEvent | swagger.Error>
     ) => {
         try {
-            res.send(await this._service.addEvent(req.auth.id, req.body));
+            res.send(fCalendarEvent(await this._service.addEvent(req.auth.id, req.body)));
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -194,6 +195,22 @@ export class CalendarController {
     ) => {
         try {
             res.send(await this._servicea.arrangeSharedEventByID(req.auth.id, req.params.id));
+        } catch (error) {
+            const message = (error as Error).message;
+            if (message === "No suitable time slots found for all members.")
+                res.status(409);
+            else
+                res.status(400);
+            res.send({ message });
+        }
+    }
+
+    saveSharedEvent = async (
+        req: JWTRequest<{ id: number }>,
+        res: Response<swagger.SharedEvent | swagger.Error>
+    ) => {
+        try {
+            res.send(await this._servicea.saveSharedEventByID(req.auth.id, req.params.id));
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }

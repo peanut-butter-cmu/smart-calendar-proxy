@@ -1,4 +1,4 @@
-import { ReminderOptions } from "../../models/EventGroup.entity.js";
+import { ReminderOptions } from "../../types/enums.js";
 import { checkSchema } from "express-validator";
 
 function noExtraFields(fields: string[]) {
@@ -227,6 +227,7 @@ const sharedNewSchema = checkSchema({
             options: (val: number) => {
                 if (val % 30 !== 0)
                     throw new Error("`duration` must divisible by 30.");
+                // TODO: check if start and end are reasonable.
                 return true;
             }
         }
@@ -240,11 +241,11 @@ const sharedNewSchema = checkSchema({
                 if (k.length !== 2 || !k.includes("type") || !k.includes("count"))
                     throw new Error("`duration` must contain only `type` and `count`.");
                 const obj = val as { type: unknown, count: unknown };
-                if (!["weekly", "monthly"].includes(`${obj.type}`))
-                    throw new Error("`type` must be \"weekly\" or \"monthly\".");
+                if (!["week", "month"].includes(`${obj.type}`))
+                    throw new Error("`type` must be \"week\" or \"month\".");
                 if (Number.isFinite(obj.count))
                     throw new Error("`count` must be number.");
-                const typedObj = val as { type: "weekly" | "monthly", count: number };
+                const typedObj = val as { type: "week" | "month", count: number };
                 if (typedObj.count < 1 || typedObj.count > 8)
                     throw new Error("`count` must in range between 1 to 8.");
                 return true;

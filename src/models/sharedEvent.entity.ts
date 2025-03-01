@@ -1,14 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Relation, ManyToMany, Index, CreateDateColumn, UpdateDateColumn, OneToMany, JoinTable } from "typeorm";
 import { CalendarEvent } from "./calendarEvent.entity.js";
 import { User } from "./user.entity.js";
-import { ReminderOptions } from "./EventGroup.entity.js";
+import { ReminderOptions, SharedEventStatus } from "../types/enums.js";
 import { SharedEventInvite } from "./sharedEventInvite.entity.js";
-
-export enum SharedEventStatus {
-    PENDING = "pending",
-    ARRANGED = "arranged",
-    DELETED = "deleted"
-}
 
 @Entity()
 export class SharedEvent {
@@ -59,8 +53,8 @@ export class SharedEvent {
     public events: Relation<CalendarEvent[]>;
 
     @Column("jsonb", { nullable: true })
-    public repeat: { 
-        type: "weekly" | "monthly";
+    public repeat?: { 
+        type: "week" | "month";
         count: number;
     };
 

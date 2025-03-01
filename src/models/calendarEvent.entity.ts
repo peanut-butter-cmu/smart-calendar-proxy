@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn, Check, Index } from "typeorm";
 import { User } from "./user.entity.js";
-import { CalendarEventGroup } from "./EventGroup.entity.js";
+import { CalendarEventGroup } from "./calendarEventGroup.entity.js";
+import { CalendarEventType } from "../types/enums.js";
 
 @Entity()
 export class CalendarEvent {
@@ -10,6 +11,9 @@ export class CalendarEvent {
     @Column({ length: 255 })
     @Index()
     public title: string;
+
+    @Column({ enum: CalendarEventType, default: CalendarEventType.NON_SHARED })
+    public type: CalendarEventType;
 
     @Column({ type: 'timestamp' })
     @Index()
@@ -29,9 +33,6 @@ export class CalendarEvent {
     @ManyToMany(() => CalendarEventGroup, group => group.events, { onDelete: 'CASCADE' })
     @JoinTable()
     public groups: Relation<CalendarEventGroup[]>;
-
-    @Column({ default: false })
-    public readOnly: boolean;
 
     @ManyToOne(() => User, user => user.events, { onDelete: 'CASCADE' })
     @Index()

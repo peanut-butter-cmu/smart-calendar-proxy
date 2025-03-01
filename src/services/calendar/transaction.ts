@@ -1,10 +1,10 @@
 import { CourseInfo } from "../../fetcher/reg-cmu.js";
 import { eachDayOfInterval } from "date-fns";
 import { EntityManager, QueryRunner } from "typeorm";
-import { GroupTitle } from "../user.service.js";
 import { createStartEndInRegDate, getDefaultBusy, getDefaultColor, getDefaultPriority, getDefaultReminders } from "../../helpers/calendar.js";
 import { CalendarEvent } from "../../models/calendarEvent.entity.js";
-import { CalendarEventGroup, EventGroupType } from "../../models/EventGroup.entity.js";
+import { CalendarEventGroup } from "../../models/calendarEventGroup.entity.js";
+import { GroupTitle, EventGroupType } from "../../types/enums.js";
 import { User } from "../../models/user.entity.js";
 
 export class CalendarTransaction {

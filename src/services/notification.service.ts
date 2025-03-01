@@ -1,22 +1,23 @@
 import { DataSource, Repository } from "typeorm";
-import { Notification, NotificationType } from "../models/notification.entity.js";
+import { Notification } from "../models/notification.entity.js";
+import { NotificationType } from "types/enums.js";
 import * as swagger from "../types/swagger.js";
 import { fCMUUsername, fNotification } from "../helpers/formatter.js";
 import { getMessaging } from "firebase-admin/messaging";
 import { User } from "../models/user.entity.js";
-import { Session } from "../models/session.entity.js";
+import { SessionService } from "./session.service.js";
 
 export type Message = {eventId: number } | { email: string };
 
 export class NotificationService {
     private _notification: Repository<Notification>;
     private _user: Repository<User>;
-    private _session: Repository<Session>;
+    private _sessionService: SessionService;
 
-    constructor(dataSource: DataSource) {
+    constructor(dataSource: DataSource, sessionService?: SessionService) {
         this._notification = dataSource.getRepository(Notification);
         this._user = dataSource.getRepository(User);
-        this._session = dataSource.getRepository(Session);
+        this._sessionService = sessionService || new SessionService(dataSource);
     }
 
     async notifyByEmails(emails: string[], type: NotificationType, message: Message) {
@@ -42,19 +43,58 @@ export class NotificationService {
 
     async notifyFirebaseByUsers(users: User[], type: NotificationType, message: Message) {
         const msging = getMessaging();
-        const sessions = await this._session
-            .createQueryBuilder("session")
-            .leftJoinAndSelect("session.owner", "owner")
-            .where("owner.id IN (:...ids)", { ids: users.map(({id}) => id) })
-            .getMany();
-        if (sessions.length === 0)
-            throw new Error("No session available.");
-        await msging.sendEach(sessions.map(session => ({
-            data: {
-                title: "I Love You"
+        
+        // Get sessions for the users
+        const sessions = await this._sessionService.findAll(); // TODO: Change to findByUserIds when the commented code is fixed
+        
+        if (sessions.length === 0) {
+            console.warn("Sessions was empty.");
+            return;
+        }
+        
+        // Create message payload for each token
+        const messages = sessions.map(session => ({
+            notification: {  // Using notification field instead of data
+                title: "I Love You",
+                body: JSON.stringify(message)  // Include the message content
             },
             token: session.fcmToken
-        })));
+        }));
+        
+        // Send messages and handle potential failures
+        try {
+            const response = await msging.sendEach(messages);
+            
+            // Check for unregistered tokens and remove them
+            if (response.failureCount > 0) {
+                const unregisteredTokens = response.responses
+                    .map((resp, idx) => {
+                        if (!resp.success && 
+                            (resp.error.code === 'messaging/registration-token-not-registered' ||
+                             resp.error.code === 'messaging/invalid-registration-token')) {
+                            return sessions[idx].fcmToken;
+                        }
+                        return null;
+                    })
+                    .filter((token): token is string => token !== null);
+                
+                if (unregisteredTokens.length > 0) {
+                    console.log(`Removing ${unregisteredTokens.length} unregistered tokens`);
+                    try {
+                        await this._sessionService.removeByTokens(unregisteredTokens);
+                    } catch (error) {
+                        console.error("Failed to remove some unregistered tokens:", error);
+                    }
+                }
+                
+                console.error("Failed to send some notifications:", response.responses.filter(r => !r.success));
+            }
+            
+            return response;
+        } catch (error) {
+            console.error("Failed to send notifications:", error);
+            throw error;
+        }
     }
 
     async getNotificationsByOwner(

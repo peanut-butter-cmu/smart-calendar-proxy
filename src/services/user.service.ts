@@ -8,17 +8,6 @@ import { MangoClient } from "../client/mango.js";
 import { Session } from "../models/session.entity.js";
 import { fJWTPayload } from "../helpers/formatter.js";
 
-export enum GroupTitle {
-    CMU = "CMU",
-    CLASS = "Class",
-    QUIZ = "Quiz",
-    ASSIGNMENT = "Assignment",
-    FINAL = "Final",
-    MIDTERM = "Midterm",
-    HOLIDAY = "Holiday",
-    OWNER = "Owner"
-}
-
 export type LoginInfo = { username: string; password: string; };
 
 export class UserService {

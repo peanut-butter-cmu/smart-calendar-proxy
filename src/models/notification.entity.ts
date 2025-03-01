@@ -1,14 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity.js";
-
-export enum NotificationType {
-    EVENT_CREATED = "event_created",
-    MEETING_SCHEDULED = "event_scheduled",
-    EVENT_DELETED = "event_deleted",
-    INVITE_ACCEPTED = "invite_accepted",
-    INVITE_REJECTED = "invite_rejected",
-    EVENT_REMINDER = "event_reminder"
-}
+import { NotificationType } from "../types/enums.js";
 
 @Entity()
 export class Notification {

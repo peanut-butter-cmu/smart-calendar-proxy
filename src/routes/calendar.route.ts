@@ -19,14 +19,14 @@ export function createCalendarRouter(dataSource: DataSource) {
     router.get("/calendar/group/:id",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.getGroup
     );
     router.patch("/calendar/group/:id",
         authorizationValidate,
         authorizationReport,
-        groupEditSchema, // TODO: add id to it
+        groupEditSchema,
         validationReport,
         calendarController.editGroup
     );
@@ -43,7 +43,7 @@ export function createCalendarRouter(dataSource: DataSource) {
     router.get("/calendar/event/:id",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.getEvent
     );
@@ -64,7 +64,7 @@ export function createCalendarRouter(dataSource: DataSource) {
     router.delete("/calendar/event/:id",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.deleteEvent
     );
@@ -79,7 +79,7 @@ export function createCalendarRouter(dataSource: DataSource) {
     router.get("/calendar/event/shared/:id",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.getSharedEvent
     );
@@ -100,30 +100,37 @@ export function createCalendarRouter(dataSource: DataSource) {
     router.delete("/calendar/event/shared/:id",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.deleteSharedEvent
     );
     router.post("/calendar/event/shared/:id/accept",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.acceptSharedEvent
     );
     router.post("/calendar/event/shared/:id/reject",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.rejectSharedEvent
     );
     router.post("/calendar/event/shared/:id/arrange",
         authorizationValidate,
         authorizationReport,
-        param("id").isNumeric(), // TODO: add error msg
+        param("id").isNumeric().withMessage("`id` must be number."),
         validationReport,
         calendarController.arrangeSharedEvent
+    );
+    router.post("/calendar/event/shared/:id/save",
+        authorizationValidate,
+        authorizationReport,
+        param("id").isNumeric().withMessage("`id` must be number."),
+        validationReport,
+        calendarController.saveSharedEvent
     );
 
     return router;

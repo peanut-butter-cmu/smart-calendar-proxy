@@ -1,6 +1,6 @@
-import { EventGroupType } from "../models/EventGroup.entity.js";
-import { SharedEventStatus } from "../models/sharedEvent.entity.js";
-import { InviteStatus } from "../models/sharedEventInvite.entity.js";
+import { EventGroupType } from "./enums.js";
+import { SharedEventStatus } from "./enums.js";
+import { InviteStatus } from "./enums.js";
 
 export type PaginationKey<T> = 
     T extends CalendarEvent ? "calendar" : 
@@ -22,9 +22,16 @@ export type PaginationRequest = {
     offset?: string;
 };
 
+export enum CalendarEventType {
+    NON_SHARED = "non-shared",
+    UNSAVED_SHARED = "unsaved-shared",
+    SAVED_SHARED = "saved-shared"
+};
+
 export type CalendarEvent = {
     id: number;
     title: string;
+    type: CalendarEventType,
     start: Date;
     end: Date;
     groups: number[];
@@ -34,7 +41,6 @@ export type CalendarEventNew = {
     title: string;
     start: Date;
     end: Date;
-    groups: number[];
 };
 
 export type CalendarEventEdit = Partial<{
@@ -89,7 +95,7 @@ export type SharedEvent = {
     }[];
     events: CalendarEvent[];
     repeat?: {
-        type: "weekly" | "monthly";
+        type: "week" | "month";
         count: number;
     }
     createdAt: Date;

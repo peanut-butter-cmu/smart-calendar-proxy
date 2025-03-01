@@ -1,15 +1,17 @@
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
 import { SharedEvent } from "../models/sharedEvent.entity.js";
-import { CalendarEventGroup } from "../models/EventGroup.entity.js";
+import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
 import { JWTPayload } from "../types/global.js";
-import { Notification, NotificationType } from "../models/notification.entity.js";
+import { Notification } from "../models/notification.entity.js";
+import { NotificationType } from "../types/enums.js";
 
 export function fCalendarEvent(event: CalendarEvent): swagger.CalendarEvent {
     return {
         id: event.id,
         title: event.title,
+        type: swagger.CalendarEventType.NON_SHARED,
         groups: event.groups.map(({ id }) => id),
         start: event.start,
         end: event.end,
@@ -43,7 +45,7 @@ export function fIdealTimeRange(event: {
 }
 
 export function fRepeat(repeat?: {
-    type: "weekly" | "monthly",
+    type: "week" | "month",
     count: number
 }) {
     return repeat ? {
