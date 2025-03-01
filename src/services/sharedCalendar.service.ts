@@ -131,6 +131,7 @@ export class SharedCalendarService {
         });
         if (!event) throw new Error("Event not found.");
         await this._shared.save({
+            ...event,
             status: SharedEventStatus.DELETED
         });
         await this._notificationService.notifyByEmails(
