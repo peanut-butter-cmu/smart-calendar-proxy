@@ -123,7 +123,7 @@ export type SharedEventNew = {
     invites: string[];
     events: CalendarEvent[];
     repeat?: {
-        type: "weekly" | "monthly",
+        type: "week" | "monthly",
         count: number
     };
 };
@@ -142,7 +142,7 @@ export type SharedEventEdit = Partial<{
     };
     invites: string[];
     repeat?: {
-        type: "weekly" | "monthly",
+        type: "week" | "month",
         count: number
     };
 }>;
