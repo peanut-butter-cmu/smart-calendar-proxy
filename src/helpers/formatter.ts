@@ -5,14 +5,36 @@ import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
 import { JWTPayload } from "../types/global.js";
 import { Notification } from "../models/notification.entity.js";
-import { NotificationType } from "../types/enums.js";
+import { CalendarEventType, NotificationType } from "../types/enums.js";
+
+function undefArr<T>(arr: T[] | null | undefined) { // sometimes undef arr not handled by TS.
+    return arr || [];
+}
+
+export function fCalendarEventType(type: CalendarEventType): swagger.CalendarEventType {
+    return {
+        [CalendarEventType.NON_SHARED]: swagger.CalendarEventType.NON_SHARED,
+        [CalendarEventType.SAVED_SHARED]: swagger.CalendarEventType.SAVED_SHARED,
+        [CalendarEventType.UNSAVED_SHARED]: swagger.CalendarEventType.UNSAVED_SHARED,
+    }[type];
+}
 
 export function fCalendarEvent(event: CalendarEvent): swagger.CalendarEvent {
     return {
         id: event.id,
         title: event.title,
-        type: swagger.CalendarEventType.NON_SHARED,
-        groups: event.groups.map(({ id }) => id),
+        type: fCalendarEventType(event.type),
+        groups: undefArr(event.groups).map(({ id }) => id),
+        start: event.start,
+        end: event.end,
+    };
+}
+
+export function fSharedCalendarEvent(event: CalendarEvent): swagger.SharedCalendarEvent {
+    return {
+        id: event.id,
+        title: event.title,
+        type: fCalendarEventType(event.type),
         start: event.start,
         end: event.end,
     };
@@ -63,19 +85,21 @@ export function fSharedEvent(event: SharedEvent): swagger.SharedEvent {
         reminders: event.reminders,
         idealDays: event.idealDays,
         idealTimeRange: fIdealTimeRange(event.idealTimeRange),
-        members: event.members?.map(member => ({
+        members: undefArr(event.members).map(member => ({
             givenName: member.givenName,
             middleName: member.middleName,
             familyName: member.familyName,
-            owner: member.id === event.owner.id
-        })) || [],
-        invites: event.invites?.map(invite => ({
+            sharedEventOwner: member.id === event.owner.id,
+            events: undefArr(event.events)
+                    .filter(event => event.owner.id === member.id)
+                    .map(fSharedCalendarEvent),
+        })),
+        invites: undefArr(event.invites).map(invite => ({
             email: invite.email,
             status: invite.status,
             updatedAt: invite.updatedAt,
             createdAt: invite.createdAt
-        })) || [],
-        events: event.events?.map(fCalendarEvent) || [],
+        })),
         repeat: fRepeat(event.repeat),
         createdAt: event.createdAt,
         updatedAt: event.updatedAt

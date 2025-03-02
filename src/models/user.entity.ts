@@ -58,9 +58,9 @@ export class User {
     @BeforeInsert()
     @BeforeUpdate()
     encryptSensitiveData() {
-        if (this.CMUPassword)
+        if (/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(this.CMUPassword), this.CMUPassword)
             this.CMUPassword = this._encrypt(this.CMUPassword);
-        if (this.mangoToken)
+        if (/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(this.mangoToken), this.mangoToken)
             this.mangoToken = this._encrypt(this.mangoToken);
     }
 
@@ -74,6 +74,8 @@ export class User {
     }
 
     public decrypt(encryptedText: string): string {
+        if (!/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(encryptedText))
+            return "";
         const key = process.env.APP_ENCRYPTION_KEY || 'default-key-change-in-production';
         const [ivHex, encrypted] = encryptedText.split(':');
         const iv = Buffer.from(ivHex, 'hex');

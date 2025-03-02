@@ -129,7 +129,7 @@ export function findFreeTimeSlots(
         const eventEnd = dayjs(event.end);
         const startMin = eventStart.hour() * 60 + eventStart.minute();
         const endMin = eventEnd.hour() * 60 + eventEnd.minute();
-        for (let min = startMin; min <= endMin; min++)
+        for (let min = startMin; min < endMin; min++)
             freeMinutes[min] = false;
     }
 

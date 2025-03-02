@@ -108,7 +108,7 @@ export function createCMUAxios() {
     return wrapper(axios.create({
         headers: { "User-Agent": process.env.REG_CLIENT_UAGENT },
         jar,
-        timeout: 2000
+        timeout: 10000
     }));
 }
 

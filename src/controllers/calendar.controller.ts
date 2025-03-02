@@ -145,17 +145,6 @@ export class CalendarController {
         }
     }
 
-    editSharedEvent = async (
-        req: JWTRequest<{ id: number }, object, swagger.SharedEventEdit>,
-        res: Response<swagger.SharedEvent | swagger.Error>
-    ) => {
-        try {
-            res.send(await this._servicea.editSharedEventByID(req.auth.id, req.params.id, req.body));
-        } catch (error) {
-            res.status(400).send({ message: (error as Error).message });
-        }
-    }
-
     deleteSharedEvent = async (
         req: JWTRequest<{ id: number }>,
         res: Response<void | swagger.Error>

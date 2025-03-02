@@ -128,7 +128,23 @@ export class UserService {
             throw new Error("Unable to delete given FCM token.");
     }
 
-    public async getAllUsers(): Promise<User[]> {
+    public async getAllUsers(params: { includeSensitiveData?: boolean }): Promise<User[]> {
+        if (params.includeSensitiveData) {
+            return await this._ds.getRepository(User).find({
+                select: {
+                    id: true,
+                    givenName: true,
+                    middleName: true,
+                    familyName: true,
+                    studentNo: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    CMUUsername: true,
+                    CMUPassword: true,
+                    mangoToken: true
+                }
+            });
+        }
         return await this._ds.getRepository(User).find({});
     }
 }

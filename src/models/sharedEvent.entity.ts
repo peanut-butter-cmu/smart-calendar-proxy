@@ -45,10 +45,10 @@ export class SharedEvent {
     @JoinTable()
     public members: Relation<User[]>;
 
-    @OneToMany(() => SharedEventInvite, invite => invite.event, { cascade: true })
+    @OneToMany(() => SharedEventInvite, invite => invite.event, { cascade: ["remove"] })
     public invites: Relation<SharedEventInvite[]>;
 
-    @ManyToMany(() => CalendarEvent, { cascade: true })
+    @ManyToMany(() => CalendarEvent, { cascade: ["remove"] })
     @JoinTable()
     public events: Relation<CalendarEvent[]>;
 
