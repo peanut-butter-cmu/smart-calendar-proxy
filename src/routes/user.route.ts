@@ -16,6 +16,12 @@ function createUserRouter(dataSource: DataSource) {
         validationReport,
         userController.authenticate
     );
+    app.post("/user/signin", 
+        body("username").notEmpty().withMessage("`username` must not be empty."),
+        body("password").notEmpty().withMessage("`password` must not be empty."),
+        validationReport,
+        userController.signIn
+    );
     app.get("/user/me",
         authorizationValidate,
         authorizationReport,

@@ -58,9 +58,9 @@ export class User {
     @BeforeInsert()
     @BeforeUpdate()
     encryptSensitiveData() {
-        if (/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(this.CMUPassword), this.CMUPassword)
+        if (!/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(this.CMUPassword) && this.CMUPassword)
             this.CMUPassword = this._encrypt(this.CMUPassword);
-        if (/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(this.mangoToken), this.mangoToken)
+        if (!/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(this.mangoToken) && this.mangoToken)
             this.mangoToken = this._encrypt(this.mangoToken);
     }
 

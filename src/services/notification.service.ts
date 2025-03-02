@@ -7,7 +7,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { User } from "../models/user.entity.js";
 import { SessionService } from "./session.service.js";
 
-export type Message = {eventId: number } | { email: string };
+export type Message = { eventId: number } | { email: string };
 
 export class NotificationService {
     private _notification: Repository<Notification>;
@@ -43,58 +43,42 @@ export class NotificationService {
 
     async notifyFirebaseByUsers(users: User[], type: NotificationType, message: Message) {
         const msging = getMessaging();
-        
-        // Get sessions for the users
-        const sessions = await this._sessionService.findAll(); // TODO: Change to findByUserIds when the commented code is fixed
-        
-        if (sessions.length === 0) {
-            console.warn("Sessions was empty.");
+        const sessions = await this._sessionService.findByUserIds(users.map(u => u.id));
+        if (sessions.length === 0)
             return;
-        }
-        
-        // Create message payload for each token
         const messages = sessions.map(session => ({
-            notification: {  // Using notification field instead of data
-                title: "I Love You",
-                body: JSON.stringify(message)  // Include the message content
+            data: {
+                type,
+                msg: JSON.stringify(message),
             },
             token: session.fcmToken
         }));
         
-        // Send messages and handle potential failures
-        try {
-            const response = await msging.sendEach(messages);
-            
-            // Check for unregistered tokens and remove them
-            if (response.failureCount > 0) {
-                const unregisteredTokens = response.responses
-                    .map((resp, idx) => {
-                        if (!resp.success && 
-                            (resp.error.code === 'messaging/registration-token-not-registered' ||
-                             resp.error.code === 'messaging/invalid-registration-token')) {
-                            return sessions[idx].fcmToken;
-                        }
-                        return null;
-                    })
-                    .filter((token): token is string => token !== null);
-                
-                if (unregisteredTokens.length > 0) {
-                    console.log(`Removing ${unregisteredTokens.length} unregistered tokens`);
-                    try {
-                        await this._sessionService.removeByTokens(unregisteredTokens);
-                    } catch (error) {
-                        console.error("Failed to remove some unregistered tokens:", error);
+        const response = await msging.sendEach(messages);
+        if (response.failureCount > 0) {
+            const unregisteredTokens = response.responses
+                .map((resp, idx) => {
+                    if (!resp.success && 
+                        (resp.error.code === 'messaging/registration-token-not-registered' ||
+                            resp.error.code === 'messaging/invalid-registration-token')) {
+                        return sessions[idx].fcmToken;
                     }
+                    return null;
+                })
+                .filter((token): token is string => token !== null);
+            
+            if (unregisteredTokens.length > 0) {
+                console.log(`Removing ${unregisteredTokens.length} unregistered tokens`);
+                try {
+                    await this._sessionService.removeByTokens(unregisteredTokens);
+                } catch (error) {
+                    console.error("Failed to remove some unregistered tokens:", error);
                 }
-                
-                console.error("Failed to send some notifications:", response.responses.filter(r => !r.success));
             }
             
-            return response;
-        } catch (error) {
-            console.error("Failed to send notifications:", error);
-            throw error;
+            console.error("Failed to send some notifications:", response.responses.filter(r => !r.success));
         }
+        return response;
     }
 
     async getNotificationsByOwner(
