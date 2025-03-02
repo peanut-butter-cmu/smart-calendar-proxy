@@ -15,7 +15,6 @@ export class SharedCalendarService {
     private _shared: Repository<SharedEvent>;
     private _invite: Repository<SharedEventInvite>;
     private _user: Repository<User>;
-    private _event: Repository<CalendarEvent>;
     private _notificationService: NotificationService;
     private _calendarService: CalendarService;
     private _ds: DataSource;
@@ -24,7 +23,6 @@ export class SharedCalendarService {
         this._shared = dataSource.getRepository(SharedEvent);
         this._invite = dataSource.getRepository(SharedEventInvite);
         this._user = dataSource.getRepository(User);
-        this._event = dataSource.getRepository(CalendarEvent);
         this._notificationService = new NotificationService(dataSource);
         this._calendarService = new CalendarService(dataSource);
         this._ds = dataSource;
