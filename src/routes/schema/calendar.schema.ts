@@ -84,10 +84,16 @@ const eventEditSchema = checkSchema({
         optional: true,
         isISO8601: true,
     },
+    isBusy: {
+        in: "body",
+        optional: true,
+        isBoolean: true,
+        errorMessage: "`isBusy` must be boolean.",
+    },
     "*": {
         in: "body",
         custom: {
-            options: noExtraFields([ "title", "start", "end" ])
+            options: noExtraFields([ "title", "start", "end", "isBusy" ])
         }
     }
 });
