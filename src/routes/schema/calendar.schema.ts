@@ -125,7 +125,7 @@ const groupEditSchema = checkSchema({
     "*": {
         in: "body",
         custom: {
-            options: noExtraFields([ "color", "busy", "priority", "reminders" ])
+            options: noExtraFields([ "color", "isBusy", "priority", "reminders" ])
         }
     }
 });
