@@ -2,7 +2,7 @@ import { DataSource, EntityManager, QueryRunner, Repository } from "typeorm";
 import { CourseInfo, RegCMUFetcher, StudentInfo } from "../fetcher/reg-cmu.js";
 import { JWTPayload } from "../types/global.js";
 import { User } from "../models/user.entity.js";
-import { MangoClient } from "../client/mango.js";
+import { MangoClient, MangoAssignment } from "../client/mango.js";
 import { Session } from "../models/session.entity.js";
 import { fJWTPayload } from "../helpers/formatter.js";
 import { Course } from "../models/course.entity.js";
@@ -266,6 +266,42 @@ export class UserService {
         await manager.remove(toRemove);
     }
 
+    private static async _cleanAssignment(
+        manager: EntityManager,
+        owner: User
+    ): Promise<void> {
+        const allAssignments = await manager.find(CalendarEvent, {
+            where: {
+                groups: [{ title: GroupTitle.ASSIGNMENT, type: EventGroupType.SYSTEM, owner: owner }],
+                owner: owner
+            }
+        });
+        const toRemove = allAssignments.filter(({created, modified}) => created.getTime() === modified.getTime());
+        await manager.remove(toRemove);
+    }
+
+    private static async _generateAssignment(
+        manager: EntityManager,
+        owner: User,
+        assignments: MangoAssignment[]
+    ): Promise<CalendarEvent[]> {
+        const assignmentGroup = await manager.findOneBy(CalendarEventGroup, {
+            title: GroupTitle.ASSIGNMENT,
+            type: EventGroupType.SYSTEM,
+            owner: { id: owner.id }
+        });
+        if (!assignmentGroup) throw new Error("Assignment group not found");
+
+        const assignmentEvents = manager.create(CalendarEvent, assignments.map(({name, due_at}) => ({
+            title: name,
+            groups: [assignmentGroup],
+            start: new Date(due_at),
+            end: new Date(due_at),
+            owner: owner
+        })));
+        return manager.save(assignmentEvents);
+    }
+
     private static async _firstSync(
         queryRunner: QueryRunner,
         user: User,
@@ -307,15 +343,15 @@ export class UserService {
     }
 
     public async updateMangoToken(userId: number, token: string): Promise<void> {
-        const user = await this._ds.manager.findOneBy(User, { id: userId });
+        const user = await this._user.findOneBy({ id: userId });
         if (!user)
             throw new Error("User not found.");
         const mango = new MangoClient(token);
         if (!(await mango.validate()))
             throw new Error("Invalid mango token.");
-        await this._ds.manager.save({
-            mangoToken: token
-        });
+        const courses = await mango.getCourses();
+        console.log(await Promise.all(courses.flatMap(c => mango.getAssignments(c.id))));
+        await this._user.update({ id: userId }, {  mangoToken: token });
     }
 
     public async addFCMToken(userId: number, token: string, deviceName: string): Promise<{id: number, deviceName: string, createdAt: Date}> {
@@ -380,7 +416,6 @@ export class UserService {
     }
 
     public async syncClassAndExam(ownerId: number): Promise<void> {
-        const qr = this._ds.createQueryRunner();
         const u = await this._user.findOne({
             where: { id: ownerId },
             select: {
@@ -393,7 +428,8 @@ export class UserService {
             throw new Error(UserServiceError.USER_NOT_FOUND);
         const groupRepo = this._ds.getRepository(CalendarEventGroup);
         const courseGroups = await groupRepo.findBy({ owner: { id: ownerId } });
-
+        
+        const qr = this._ds.createQueryRunner();
         const m = qr.manager;
         await qr.connect();
         await qr.startTransaction();
@@ -424,9 +460,24 @@ export class UserService {
             throw new Error(UserServiceError.USER_NOT_FOUND);
         if (!u.mangoToken)
             throw new Error(UserServiceError.NO_MANGO_TOKEN);
-        // const mango = u.decrypt(u.mangoToken);
-        // If invalid mango token, throw error
-        throw new Error("Not implemented.");
+
+        const qr = this._ds.createQueryRunner();
+        const m = qr.manager;
+        await qr.connect();
+        await qr.startTransaction();
+        try {
+            const mangoToken = u.decrypt(u.mangoToken);
+            const client = new MangoClient(mangoToken);
+            const courses = await client.getCourses();
+            const assignments = (await Promise.all(courses.map(c => client.getAssignments(c.id)))).flat();
+
+            await UserService._cleanAssignment(m, u);
+            await UserService._generateAssignment(m, u, assignments);
+            await qr.commitTransaction();
+        } catch(e) {
+            await qr.rollbackTransaction();
+            throw e;
+        }
     }
 }
 

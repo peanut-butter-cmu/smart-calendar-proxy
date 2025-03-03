@@ -209,8 +209,8 @@ export class SharedCalendarService {
 
             // Get all busy events for all members
             const memberIds = shared.members.map(member => member.id);
-            const busyEvents = await man
-                .createQueryBuilder(CalendarEvent, "event")
+            const busyEvents = await this._event
+                .createQueryBuilder("event")
                 .leftJoinAndSelect("event.owner", "owner")
                 .leftJoinAndSelect("event.groups", "grp")
                 .where("owner.id IN (:...memberIds)", { memberIds })
