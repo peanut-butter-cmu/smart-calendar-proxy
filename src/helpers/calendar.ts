@@ -25,9 +25,9 @@ export function getDefaultColor(title: GroupTitle | string) {
         case GroupTitle.MIDTERM:
             return "rgb(255, 0, 0)";
         case GroupTitle.HOLIDAY:
-            return "rgb(255, 255, 255)";
+            return "rgb(120, 134, 199)";
         case GroupTitle.OWNER:
-            return "rgb(255, 255, 255)";
+            return "rgb(154, 126, 111)";
         case GroupTitle.QUIZ:
             return "rgb(255, 145, 0)";
     }
