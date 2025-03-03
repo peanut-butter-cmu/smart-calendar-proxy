@@ -38,7 +38,7 @@ export class SharedCalendarService {
                 { status: Not(SharedEventStatus.DELETED), owner: { id: ownerId } }, 
                 { status: Not(SharedEventStatus.DELETED), invites: { email: fCMUEmail(user.CMUUsername) } },
             ],
-            relations: ["invites", "members", "events", "owner"],
+            relations: ["invites", "members", "events", "events.owner", "owner"],
             take: params.limit,
             skip: params.offset,
             order: { id: "DESC" }
@@ -62,7 +62,7 @@ export class SharedCalendarService {
                 { id: eventId, status: Not(SharedEventStatus.DELETED), owner: { id: ownerId } }, 
                 { id: eventId, status: Not(SharedEventStatus.DELETED), invites: { email: fCMUEmail(user.CMUUsername) } },
             ],
-            relations: ["invites", "members", "events", "owner"],
+            relations: ["invites", "members", "events", "events.owner", "owner"],
             order: { id: "DESC" }
         });
         if (!event)
@@ -115,11 +115,6 @@ export class SharedCalendarService {
         return fSharedEvent(savedEvent);
     }
 
-    async editSharedEventByID(ownerId: number, id: number, params: swagger.SharedEventEdit): Promise<swagger.SharedEvent> {
-        console.log([ownerId, id, params]);
-        throw new Error("Not implemented");
-    }
-
     async deleteSharedEventByID(ownerId: number, id: number): Promise<void> {
         const event = await this._shared.findOne({
             where: {
@@ -127,17 +122,29 @@ export class SharedCalendarService {
                 status: Not(SharedEventStatus.DELETED),
                 owner: { id: ownerId }
             },
-            relations: ["members"]
+            relations: ["members", "events"]
         });
         if (!event) throw new Error("Event not found.");
         await this._shared.save({
+            ...event,
             status: SharedEventStatus.DELETED
         });
+        if (event.events)
+            await this._event.remove(event.events);
+        await this.removeAllInvites(ownerId, id);
         await this._notificationService.notifyByEmails(
             event.members.map(member => member.CMUUsername),
             NotificationType.EVENT_DELETED,
             { eventId: event.id }
         )
+    }
+
+    async removeAllInvites(ownerId: number, eventId: number): Promise<void> {
+        const invites = await this._invite.findBy({
+            event: { id: eventId, owner: { id: ownerId } }
+        });
+        // no need to handle empty array.
+        await this._invite.remove(invites);
     }
 
     async _handleInvite(status: InviteStatus.ACCEPTED | InviteStatus.REJECTED, userId: number, eventId: number) {
@@ -202,8 +209,8 @@ export class SharedCalendarService {
 
             // Get all busy events for all members
             const memberIds = shared.members.map(member => member.id);
-            const busyEvents = await man
-                .createQueryBuilder(CalendarEvent, "event")
+            const busyEvents = await this._event
+                .createQueryBuilder("event")
                 .leftJoinAndSelect("event.owner", "owner")
                 .leftJoinAndSelect("event.groups", "grp")
                 .where("owner.id IN (:...memberIds)", { memberIds })
@@ -244,7 +251,15 @@ export class SharedCalendarService {
 
             shared.events = createdEvents;
             shared.status = SharedEventStatus.ARRANGED;
-            const savedShared = await man.save(shared);
+            await man.save(shared);
+            await this.removeAllInvites(ownerId, eventId);
+            
+            // Reload the shared event with all relations to ensure events have owner information
+            const savedShared = await man.findOne(SharedEvent, {
+                where: { id: shared.id },
+                relations: ["invites", "members", "events", "events.owner", "owner"]
+            });
+            
             await qr.commitTransaction();
             return fSharedEvent(savedShared);
         } catch(error) {
@@ -256,10 +271,23 @@ export class SharedCalendarService {
     }
 
     async saveSharedEventByID(ownerId: number, eventId: number): Promise<swagger.SharedEvent> {
-        const event = await this._shared.findOne({
-            where: {
+        const result = await this._shared.update(
+            {
                 id: eventId,
                 status: SharedEventStatus.ARRANGED,
+                owner: { id: ownerId }
+            },
+            {
+                status: SharedEventStatus.SAVED
+            }
+        );
+        if (!result.affected)
+            throw new Error("Arranged shared event not found.");
+
+        let event = await this._shared.findOne({
+            where: {
+                id: eventId,
+                status: SharedEventStatus.SAVED,
                 owner: { id: ownerId }
             },
             relations: ["events", "members", "owner"]
@@ -268,8 +296,26 @@ export class SharedCalendarService {
         if (!event)
             throw new Error("Arranged shared event not found.");
 
-        event.status = SharedEventStatus.SAVED;
-        const savedEvent = await this._shared.save(event);
+        if (event.events) {
+            await Promise.all(
+                event.events.map(evnt => this._event.update(
+                    { id: evnt.id }, 
+                    { type: CalendarEventType.SAVED_SHARED }
+                ))
+            );
+        }
+
+        event = await this._shared.findOne({
+            where: {
+                id: eventId,
+                status: SharedEventStatus.SAVED,
+                owner: { id: ownerId }
+            },
+            relations: ["events", "events.owner", "members", "owner"]
+        });
+
+        if (!event)
+            throw new Error("Arranged shared event not found.");
 
         // Notify all members
         await this._notificationService.notifyByEmails(
@@ -278,6 +324,6 @@ export class SharedCalendarService {
             { eventId: event.id }
         );
 
-        return fSharedEvent(savedEvent);
+        return fSharedEvent(event);
     }
 }

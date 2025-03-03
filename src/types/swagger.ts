@@ -23,9 +23,9 @@ export type PaginationRequest = {
 };
 
 export enum CalendarEventType {
-    NON_SHARED = "non-shared",
-    UNSAVED_SHARED = "unsaved-shared",
-    SAVED_SHARED = "saved-shared"
+    NON_SHARED = "non_shared",
+    UNSAVED_SHARED = "unsaved_shared",
+    SAVED_SHARED = "saved_shared"
 };
 
 export type CalendarEvent = {
@@ -35,6 +35,14 @@ export type CalendarEvent = {
     start: Date;
     end: Date;
     groups: number[];
+};
+
+export type SharedCalendarEvent = {
+    id: number;
+    title: string;
+    type: CalendarEventType,
+    start: Date;
+    end: Date;
 };
 
 export type CalendarEventNew = {
@@ -85,7 +93,8 @@ export type SharedEvent = {
         givenName: string;
         middleName: string | null;
         familyName: string;
-        owner: boolean;
+        sharedEventOwner: boolean;
+        events: SharedCalendarEvent[];
     }[];
     invites: {
         email: string;
@@ -93,7 +102,6 @@ export type SharedEvent = {
         updatedAt: Date;
         createdAt: Date;
     }[];
-    events: CalendarEvent[];
     repeat?: {
         type: "week" | "month";
         count: number;

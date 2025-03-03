@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import { fUser } from "../helpers/formatter.js";
 import { Request, Response } from "express";
 import { JWTRequest } from "../types/global.js";
-import { UserService } from "../services/user.service.js";
+import { LoginError, UserService } from "../services/user.service.js";
 import * as swagger from "../types/swagger.js";
 
 export class UserController {
@@ -22,6 +22,25 @@ export class UserController {
         } catch (error) {
             const msg = (error as Error).message;
             if (msg === "Unable to sign in.")
+                res.status(401);
+            else
+                res.status(400);
+            res.send({ message: msg });
+        }
+    }
+
+    signIn = async (
+        req: Request<object, object, { username: string; password: string; }>, 
+        res: Response<string | swagger.Error>
+    ) => {
+        try {
+            const payload = await this._userService.signIn(req.body);
+            console.log(payload);
+            
+            res.send(jwt.sign(payload, process.env.APP_JWT_SECRET));
+        } catch (error) {
+            const msg = (error as Error).message;
+            if (msg === LoginError.INVALID_USER_CRED)
                 res.status(401);
             else
                 res.status(400);

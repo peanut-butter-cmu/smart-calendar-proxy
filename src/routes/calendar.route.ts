@@ -4,7 +4,7 @@ import { DataSource } from "typeorm";
 import { createAuthorizationValidator, validationReport } from "../helpers/routes.js";
 import { authorizationReport } from "../helpers/routes.js";
 import { CalendarController } from "../controllers/calendar.controller.js";
-import { eventEditSchema, eventNewSchema, groupEditSchema, paginationSchema, sharedEditSchema, sharedNewSchema } from "./schema/calendar.schema.js";
+import { eventEditSchema, eventNewSchema, groupEditSchema, paginationSchema, sharedNewSchema } from "./schema/calendar.schema.js";
 
 export function createCalendarRouter(dataSource: DataSource) {
     const router = Router();
@@ -89,13 +89,6 @@ export function createCalendarRouter(dataSource: DataSource) {
         sharedNewSchema,
         validationReport,
         calendarController.addSharedEvent
-    );
-    router.patch("/calendar/event/shared/:id",
-        authorizationValidate,
-        authorizationReport,
-        sharedEditSchema,
-        validationReport,
-        calendarController.editSharedEvent
     );
     router.delete("/calendar/event/shared/:id",
         authorizationValidate,

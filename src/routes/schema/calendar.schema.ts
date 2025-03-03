@@ -87,7 +87,7 @@ const eventEditSchema = checkSchema({
     "*": {
         in: "body",
         custom: {
-            options: noExtraFields([ "title", "start", "end" ])
+            options: noExtraFields([ "title", "start", "end", "isBusy" ])
         }
     }
 });
@@ -125,7 +125,7 @@ const groupEditSchema = checkSchema({
     "*": {
         in: "body",
         custom: {
-            options: noExtraFields([ "color", "busy", "priority", "reminders" ])
+            options: noExtraFields([ "color", "isBusy", "priority", "reminders" ])
         }
     }
 });
