@@ -186,3 +186,16 @@ export function fCalendarEventPagination(
         }
     };
 }
+
+/**
+ * Extract the first 6 course code from course name
+ * @param courseName - The name of the course
+ * @returns The first 6 course no.
+ * @throws If the course name does not contain a valid course code
+ */
+export function fMangoCourseID(courseName: string): string {
+    const match = courseName.match(/^\d{6}/);
+    if (!match)
+        throw new Error("Invalid course name.");
+    return match[0];
+}

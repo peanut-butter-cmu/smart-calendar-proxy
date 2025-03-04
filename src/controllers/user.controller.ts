@@ -5,11 +5,14 @@ import { Request, Response } from "express";
 import { JWTRequest } from "../types/global.js";
 import { UserService, LoginError } from "../services/user.service.js";
 import * as swagger from "../types/swagger.js";
+import { SyncService } from "../services/sync.service.js";
 
 export class UserController {
     private _userService: UserService;
+    private _syncService: SyncService;
     constructor(dataSource: DataSource) {
         this._userService = new UserService(dataSource)
+        this._syncService = new SyncService(dataSource, { userService: this._userService });
     }
 
     authenticate = async (
@@ -46,10 +49,8 @@ export class UserController {
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._userService.updateMangoToken(
-                req.auth.id, req.query.token as string
-            );
-            res.sendStatus(200);
+            await this._userService.updateMangoToken(req.auth.id, req.query.token);
+            res.sendStatus(204);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
         }
@@ -94,12 +95,24 @@ export class UserController {
         }
     }
 
-    syncEvents = async (
+    syncUserEvents = async (
         req: JWTRequest,
         res: Response<void | swagger.Error>
     ) => {
         try {
-            await this._userService.syncEvents(req.auth.id);
+            await this._syncService.syncUserEvents(req.auth.id);
+            res.sendStatus(204);
+        } catch (error) {
+            res.status(400).send({ message: (error as Error).message });
+        }
+    }
+
+    syncGlobalEvents = async (
+        req: Request,
+        res: Response<void | swagger.Error>
+    ) => {
+        try {
+            await this._syncService.syncGlobalEvents();
             res.sendStatus(204);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });

@@ -7,22 +7,35 @@ import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { EventGroupType, GroupTitle } from "../types/enums.js";
 import { UserService } from "./user.service.js";
 import { getDefaultColor, getDefaultPriority, getDefaultBusy, getDefaultReminders } from "../helpers/calendar.js";
-import { CourseInfo } from "fetcher/reg-cmu.js";
+import { Course } from "../models/course.entity.js";
+import { CourseInfo } from "../fetcher/reg-cmu.js";
 
 export class CalendarService {
     private _event: Repository<CalendarEvent>;
     private _group: Repository<CalendarEventGroup>;
     private _userService: UserService;
+    private _course: Repository<Course>;
 
     constructor(ds: DataSource, userService: UserService) {
         this._event = ds.getRepository(CalendarEvent);
         this._group = ds.getRepository(CalendarEventGroup);
         this._userService = userService;
+        this._course = ds.getRepository(Course);
     }
 
     // Group related methods
     public async getGroupsByOwner(ownerId: number): Promise<CalendarEventGroup[]> {
         return this._group.findBy({ owner: { id: ownerId } });
+    }
+
+    public async getGroupByCourseId(ownerId: number, courseId: string): Promise<CalendarEventGroup> {
+        const course = await this._course.findOneBy({ code: courseId });
+        if (!course)
+            throw new Error(CalendarError.COURSE_NOT_FOUND);
+        const group = await this._group.findOneBy({ title: course.title, owner: { id: ownerId } });
+        if (!group)
+            throw new Error(CalendarError.GROUP_NOT_FOUND);
+        return group;
     }
 
     public async getGroupByTitle(ownerId: number, title: GroupTitle): Promise<CalendarEventGroup> {
@@ -56,7 +69,7 @@ export class CalendarService {
         return this.getGroupByOwner(ownerId, groupId);
     }
 
-    public async createDefaultGroups(ownerId: number, courses: CourseInfo[]): Promise<void> {
+    public async createDefaultGroups(userId: number, courses: CourseInfo[]): Promise<void> {
         const systemGroups = [
             { title: GroupTitle.OWNER },
             { title: GroupTitle.CLASS },
@@ -64,18 +77,18 @@ export class CalendarService {
             { title: GroupTitle.FINAL },
         ];
         const courseGroups = courses.map(c => ({ title: c.title }));
-        const user = await this._userService.getUserById(ownerId);
+        const user = await this._userService.getUserById(userId, { credential: true });
         if (user.mangoToken) {
             systemGroups.push({ title: GroupTitle.ASSIGNMENT });
             systemGroups.push({ title: GroupTitle.QUIZ });
         }
-        const existingGroups = await this.getGroupsByOwner(ownerId);
+        const existingGroups = await this.getGroupsByOwner(userId);
         const newGroups = [
             ...systemGroups
                 .filter(group => !existingGroups.some(g => g.title === group.title))
                 .map(g => ({
                     ...g,
-                    owner: { id: ownerId },
+                    owner: { id: userId },
                     type: EventGroupType.SYSTEM,
                     readonly: true,
                     color: getDefaultColor(g.title),
@@ -87,7 +100,7 @@ export class CalendarService {
                 .filter(group => !existingGroups.some(g => g.title === group.title))
                 .map(g => ({
                     ...g,
-                    owner: { id: ownerId },
+                    owner: { id: userId },
                     type: EventGroupType.COURSE,
                     readonly: true,
                     color: getDefaultColor(GroupTitle.CLASS),
@@ -205,5 +218,6 @@ export class CalendarService {
 export enum CalendarError {
     GROUP_NOT_FOUND = "Group not found.",
     EVENT_NOT_FOUND = "Event not found.",
-    EVENT_END_BEFORE_START = "Event end before it start."
+    EVENT_END_BEFORE_START = "Event end before it start.",
+    COURSE_NOT_FOUND = "Course not found."
 }

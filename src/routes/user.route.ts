@@ -4,6 +4,7 @@ import { fcmTokenSchema } from "./schema/user.schema.js";
 import { UserController } from "../controllers/user.controller.js";
 import { DataSource } from "typeorm";
 import { authorizationReport, createAuthorizationValidator, validationReport } from "../helpers/routes.js";
+import { rateLimit } from "express-rate-limit";
 
 function createUserRouter(dataSource: DataSource) {
     const app = Router();
@@ -50,8 +51,20 @@ function createUserRouter(dataSource: DataSource) {
     app.post("/user/sync",
         authorizationValidate,
         authorizationReport,
-        userController.syncEvents
+        rateLimit({
+            windowMs: 60 * 60 * 1000, // 1 hour
+            max: 5,
+            message: {
+                error: "Too many requests, please try again later."
+            }
+        }),
+        userController.syncUserEvents
     );
+    if (process.env.NODE_ENV === "development") {
+        app.post("/dev/sync/global",
+            userController.syncGlobalEvents
+        );
+    }
 
     return app;
 }

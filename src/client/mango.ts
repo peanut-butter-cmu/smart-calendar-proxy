@@ -46,5 +46,4 @@ export class MangoClient {
         });
         return resp.data;
     }
-
 }

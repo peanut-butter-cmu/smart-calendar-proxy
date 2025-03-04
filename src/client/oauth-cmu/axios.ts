@@ -80,13 +80,7 @@ export class AxiosOAuthClient implements IOAuthClient {
                 AxiosOAuthClient._createURLSearchParams(body),
                 AxiosOAuthClient._convertRequestOptions(options)
             );
-        try {
-            const encodedURL = AxiosOAuthClient._getFirstGroup(/pageRedirect\|\|(.+)\|/g, resp.data);
-            return new URL(decodeURIComponent(encodedURL));
-        } catch(e) {
-            if (process.env.DEBUG)
-                console.log(e.stack);
-            throw new Error(`invalid server response (${resp.data})!`);
-        }
+        const encodedURL = AxiosOAuthClient._getFirstGroup(/pageRedirect\|\|(.+)\|/g, resp.data);
+        return new URL(decodeURIComponent(encodedURL));
     }
 }
