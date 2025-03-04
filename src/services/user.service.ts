@@ -178,15 +178,15 @@ export class UserService {
         return manager.save(classEvents);
     }
 
-    private static async _generateExamEvent(
+    private async _generateExamEvent(
         manager: EntityManager,
         ownerId: number,
         group: GroupTitle.MIDTERM | GroupTitle.FINAL,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
     ): Promise<CalendarEvent[]> {
-        const desiredGroup = groups.find(({ title, type }) => title === group && type === EventGroupType.SYSTEM)!;
-        const examEvents = manager.create(CalendarEvent, courses
+        const desiredGroup = await this._calendarService.getGroupByTitle(ownerId, group);
+        const examEvents = await manager.save(manager.create(CalendarEvent, courses
             .map(course => group === GroupTitle.MIDTERM ? 
                 { ...course, exam: course.schedule.midterm } : 
                 { ...course, exam: course.schedule.final }
@@ -199,26 +199,26 @@ export class UserService {
                 end: exam.end,
                 owner: { id: ownerId }
             })
-        ));
-        return manager.save(examEvents);
+        )));
+        return examEvents;
     }
 
-    private static async _generateMidtermExamEvent(
+    private async _generateMidtermExamEvent(
         manager: EntityManager,
         ownerId: number,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
     ): Promise<CalendarEvent[]> {
-        return UserService._generateExamEvent(manager, ownerId, GroupTitle.MIDTERM, courses, groups);
+        return this._generateExamEvent(manager, ownerId, GroupTitle.MIDTERM, courses, groups);
     }
 
-    private static async _generateFinalExamEvent(
+    private async _generateFinalExamEvent(
         manager: EntityManager,
         ownerId: number,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
     ): Promise<CalendarEvent[]> {
-        return UserService._generateExamEvent(manager, ownerId, GroupTitle.FINAL, courses, groups);
+        return this._generateExamEvent(manager, ownerId, GroupTitle.FINAL, courses, groups);
     }
 
     // private static async _cleanMidtermExamEvent(
@@ -445,8 +445,8 @@ export class UserService {
             await UserService._cleanEventsByTitle(m, ownerId, GroupTitle.FINAL);
 
             await UserService._generateClassEvent(m, ownerId, courses, courseGroups);
-            await UserService._generateMidtermExamEvent(m, ownerId, courses, courseGroups);
-            await UserService._generateFinalExamEvent(m, ownerId, courses, courseGroups);
+            await this._generateMidtermExamEvent(m, ownerId, courses, courseGroups);
+            await this._generateFinalExamEvent(m, ownerId, courses, courseGroups);
             await qr.commitTransaction();
         } catch(e) {
             await qr.rollbackTransaction();

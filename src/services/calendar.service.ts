@@ -25,6 +25,13 @@ export class CalendarService {
         return this._group.findBy({ owner: { id: ownerId } });
     }
 
+    public async getGroupByTitle(ownerId: number, title: GroupTitle): Promise<CalendarEventGroup> {
+        const group = await this._group.findOneBy({ title, owner: { id: ownerId } });
+        if (!group)
+            throw new Error(CalendarError.GROUP_NOT_FOUND);
+        return group;
+    }
+
     public async getGroupByOwner(ownerId: number, groupId: number): Promise<CalendarEventGroup> {
         const group = await this._group.findOneBy({ id: groupId, owner: { id: ownerId } });
         if (!group)
