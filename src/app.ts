@@ -21,6 +21,7 @@ const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
 const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
+console.log(allowedOrigins);
 
 app.use(express.json());
 app.use(corsMiddleware);
