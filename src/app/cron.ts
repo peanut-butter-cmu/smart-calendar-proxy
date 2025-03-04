@@ -36,7 +36,7 @@ export function initCronJobs(ds: DataSource) {
         }
     });
 
-    cron.schedule("* * * *", async () => {
+    cron.schedule("0 * * * *", async () => {
         const now = new Date();
         const tenSec = dayjs(now).add(10, "seconds").toDate();
         console.log("Cron Job: Time", new Date().toISOString());
