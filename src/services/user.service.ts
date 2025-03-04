@@ -1,16 +1,15 @@
-import { DataSource, EntityManager, QueryRunner, Repository } from "typeorm";
-import { CourseInfo, RegCMUFetcher, StudentInfo } from "../fetcher/reg-cmu.js";
-import { JWTPayload } from "../types/global.js";
+import { DataSource, EntityManager, Repository } from "typeorm";
+import { CourseInfo, RegCMUFetcher } from "../fetcher/reg-cmu.js";
 import { User } from "../models/user.entity.js";
 import { MangoClient, MangoAssignment } from "../client/mango.js";
 import { Session } from "../models/session.entity.js";
-import { fJWTPayload } from "../helpers/formatter.js";
-import { Course } from "../models/course.entity.js";
 import { eachDayOfInterval } from "date-fns";
-import { createStartEndInRegDate, getDefaultBusy, getDefaultColor, getDefaultPriority, getDefaultReminders } from "../helpers/calendar.js";
+import { createStartEndInRegDate } from "../helpers/calendar.js";
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
 import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { EventGroupType, GroupTitle } from "../types/enums.js";
+import { CalendarService } from "./calendar.service.js";
+import dayjs from "dayjs";
 
 export type LoginInfo = { username: string; password: string; };
 
@@ -21,145 +20,143 @@ export enum LoginError {
 export class UserService {
     private _ds: DataSource;
     private _user: Repository<User>;
+    private _calendarService: CalendarService;
+    private _session: Repository<Session>;
 
     constructor(dataSource: DataSource) {
         this._ds = dataSource;
         this._user = dataSource.getRepository(User);
+        this._calendarService = new CalendarService(dataSource, this);
+        this._session = dataSource.getRepository(Session);
     }
 
-    private async _isStudentExist(
-        studentNo: number
+    // private async _isStudentExist(
+    //     studentNo: number
+    // ): Promise<boolean> {
+    //     const student = await this._user.findOneBy({ studentNo });
+    //     return student !== null;
+    // }
+
+    private async _isUserExist(
+        cred: LoginInfo
     ): Promise<boolean> {
-        const student = await this._ds.manager.findOneBy(User, { studentNo });
+        const student = await this._user.findOneBy({ CMUUsername: cred.username });
         return student !== null;
     }
 
-    public async auth(cred: LoginInfo): Promise<JWTPayload> {
-        const queryRunner = this._ds.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-        try {
-            const reg = new RegCMUFetcher(cred);
-            const student = await reg.getStudent();
-            const userPromise = (await this._isStudentExist(student.studentNo)) ?
-                UserService._signIn(queryRunner, student) : 
-                UserService._signUp(reg, queryRunner, cred, student);
-            const user = await userPromise;
-            await queryRunner.commitTransaction();
-            return user;
-        } catch(error) {
-            await queryRunner.rollbackTransaction();
-            throw error;
-        }
+    public async auth(cred: LoginInfo): Promise<User> {
+        return (await this._isUserExist(cred)) ? this.signIn(cred) : this.signUp(cred);
     }
 
-    public async signIn(cred: LoginInfo): Promise<JWTPayload> {
+    public async signIn(cred: LoginInfo): Promise<User> {
         const user = await this._user.findOne({ 
             where: { CMUUsername: cred.username },
             select: { id: true, CMUPassword: true }
         });
         if (!user || cred.password !== user.decrypt(user.CMUPassword))
             throw new Error(LoginError.INVALID_USER_CRED);
-        return { id: user.id };
-    }
-
-    private static async _initUserByStudentInfo(
-        manager: EntityManager,
-        { givenName, middleName, familyName, studentNo }: StudentInfo,
-        { username, password }: LoginInfo
-    ): Promise<User> {
-        let user = manager.create(User, {
-            givenName, middleName, familyName, studentNo,
-            CMUUsername: username, CMUPassword: password,
-            mangoToken: ""
-        });
-        user = await manager.save(user);
-        if (!user)
-            throw new Error("Unable to sign up.");
         return user;
     }
 
-    private static async _initUserByStudentNo(
-        manager: EntityManager,
-        studentNo: number
-    ): Promise<User> {
-        const user = await manager.findOneBy(User, { studentNo });
-        if (!user)
-            throw new Error("Unable to sign in.");
-        return user;
-    }
+    // private static async _initUserByStudentInfo(
+    //     manager: EntityManager,
+    //     { givenName, middleName, familyName, studentNo }: StudentInfo,
+    //     { username, password }: LoginInfo
+    // ): Promise<User> {
+    //     let user = manager.create(User, {
+    //         givenName, middleName, familyName, studentNo,
+    //         CMUUsername: username, CMUPassword: password,
+    //         mangoToken: ""
+    //     });
+    //     user = await manager.save(user);
+    //     if (!user)
+    //         throw new Error("Unable to sign up.");
+    //     return user;
+    // }
 
-    private static async _updateUserCourses(
-        manager: EntityManager,
-        user: User,
-        courses: CourseInfo[]
-    ): Promise<void> {
-        const existingCourses = await manager.find(Course, {
-            where: courses.map(course => ({
-                code: course.courseNo,
-                lecSection: course.section.lec,
-                labSection: course.section.lab
-            }))
-        });
-        const existingCoursesSet = new Set(existingCourses.map(course => course.code + course.lecSection + course.labSection));
-        let newCourses = manager.create(Course, 
-            courses.filter(course => !existingCoursesSet.has(course.courseNo + course.section.lec + course.section.lab))
-            .map(({courseNo, section, title, schedule}) => ({
-                code: courseNo,
-                lecSection: section.lec,
-                labSection: section.lab,
-                title: title,
-                scheduleDays: schedule.days,
-                scheduleStart: schedule.start,
-                scheduleEnd: schedule.end,
-                midtermExamStart: schedule.midterm?.start,
-                midtermExamEnd: schedule.midterm?.end,
-                finalExamStart: schedule.final?.start,
-                finalExamEnd: schedule.final?.end,
-                roster: []
-            }))
-        );
-        newCourses = await manager.save(newCourses);
-        user.courses = [...existingCourses, ...newCourses];
-        await manager.save(user);
-    }
+    // private static async _initUserByStudentNo(
+    //     manager: EntityManager,
+    //     studentNo: number
+    // ): Promise<User> {
+    //     const user = await manager.findOneBy(User, { studentNo });
+    //     if (!user)
+    //         throw new Error("Unable to sign in.");
+    //     return user;
+    // }
+
+    // private static async _updateUserCourses(
+    //     manager: EntityManager,
+    //     user: User,
+    //     courses: CourseInfo[]
+    // ): Promise<void> {
+    //     const existingCourses = await manager.find(Course, {
+    //         where: courses.map(course => ({
+    //             code: course.courseNo,
+    //             lecSection: course.section.lec,
+    //             labSection: course.section.lab
+    //         }))
+    //     });
+    //     const existingCoursesSet = new Set(existingCourses.map(course => course.code + course.lecSection + course.labSection));
+    //     let newCourses = manager.create(Course, 
+    //         courses.filter(course => !existingCoursesSet.has(course.courseNo + course.section.lec + course.section.lab))
+    //         .map(({courseNo, section, title, schedule}) => ({
+    //             code: courseNo,
+    //             lecSection: section.lec,
+    //             labSection: section.lab,
+    //             title: title,
+    //             scheduleDays: schedule.days,
+    //             scheduleStart: schedule.start,
+    //             scheduleEnd: schedule.end,
+    //             midtermExamStart: schedule.midterm?.start,
+    //             midtermExamEnd: schedule.midterm?.end,
+    //             finalExamStart: schedule.final?.start,
+    //             finalExamEnd: schedule.final?.end,
+    //             roster: []
+    //         }))
+    //     );
+    //     newCourses = await manager.save(newCourses);
+    //     user.courses = [...existingCourses, ...newCourses];
+    //     await manager.save(user);
+    // }
 
     // Calendar transaction methods
-    private static async _generateDefaultGroup(
-        manager: EntityManager,
-        owner: User,
-        courses: CourseInfo[]
-    ): Promise<CalendarEventGroup[]> {
-        const categoryGroups = Object.values(GroupTitle).map(title => ({ 
-            title, 
-            type: EventGroupType.SYSTEM,
-            readonly: true, 
-            owner: owner,
-            color: getDefaultColor(title),
-            priority: getDefaultPriority(title),
-            isBusy: getDefaultBusy(title),
-            reminders: getDefaultReminders(title),
-        }));
-        const courseGroups = courses.map(course => ({
-            title: course.title,
-            type: EventGroupType.COURSE,
-            readonly: true,
-            owner: owner,
-            color: getDefaultColor(GroupTitle.CLASS),
-            priority: getDefaultPriority(GroupTitle.CLASS),
-            isBusy: getDefaultBusy(GroupTitle.CLASS),
-            reminders: getDefaultReminders(GroupTitle.CLASS),
-        }));
-        const groups = manager.create(
-            CalendarEventGroup, 
-            [ ...categoryGroups, ...courseGroups ]
-        );
-        return manager.save(groups);
-    }
+    // private static async _generateDefaultGroup(
+    //     manager: EntityManager,
+    //     owner: User,
+    //     courses: CourseInfo[]
+    // ): Promise<CalendarEventGroup[]> {
+    //     const categoryGroups = Object.values(GroupTitle)
+    //         .filter(t => t !== GroupTitle.ASSIGNMENT && t !== GroupTitle.QUIZ)
+    //         .map(title => ({ 
+    //             title, 
+    //             type: EventGroupType.SYSTEM,
+    //             readonly: true, 
+    //             owner: { id: owner.id },
+    //             color: getDefaultColor(title),
+    //             priority: getDefaultPriority(title),
+    //             isBusy: getDefaultBusy(title),
+    //             reminders: getDefaultReminders(title),
+    //         }));
+    //     const courseGroups = courses.map(course => ({
+    //         title: course.title,
+    //         type: EventGroupType.COURSE,
+    //         readonly: true,
+    //         owner: { id: owner.id },
+    //         color: getDefaultColor(GroupTitle.CLASS),
+    //         priority: getDefaultPriority(GroupTitle.CLASS),
+    //         isBusy: getDefaultBusy(GroupTitle.CLASS),
+    //         reminders: getDefaultReminders(GroupTitle.CLASS),
+    //     }));
+    //     const groups = manager.create(
+    //         CalendarEventGroup, 
+    //         [ ...categoryGroups, ...courseGroups ]
+    //     );
+    //     return manager.save(groups);
+    // }
 
     private static async _generateClassEvent(
         manager: EntityManager,
-        owner: User,
+        ownerId: number,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
     ): Promise<CalendarEvent[]> {
@@ -175,7 +172,7 @@ export class UserService {
                 ...evnt,
                 title,
                 groups: [ classGroup, groups.find(group => group.title === title) ],
-                owner: owner
+                owner: { id: ownerId }
             }))
         }).flat());
         return manager.save(classEvents);
@@ -183,7 +180,7 @@ export class UserService {
 
     private static async _generateExamEvent(
         manager: EntityManager,
-        owner: User,
+        ownerId: number,
         group: GroupTitle.MIDTERM | GroupTitle.FINAL,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
@@ -200,7 +197,7 @@ export class UserService {
                 groups: [desiredGroup, groups.find(group => group.title === title && group.type === EventGroupType.COURSE)],
                 start: exam.start,
                 end: exam.end,
-                owner: owner
+                owner: { id: ownerId }
             })
         ));
         return manager.save(examEvents);
@@ -208,77 +205,69 @@ export class UserService {
 
     private static async _generateMidtermExamEvent(
         manager: EntityManager,
-        owner: User,
+        ownerId: number,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
     ): Promise<CalendarEvent[]> {
-        return UserService._generateExamEvent(manager, owner, GroupTitle.MIDTERM, courses, groups);
+        return UserService._generateExamEvent(manager, ownerId, GroupTitle.MIDTERM, courses, groups);
     }
 
     private static async _generateFinalExamEvent(
         manager: EntityManager,
-        owner: User,
+        ownerId: number,
         courses: CourseInfo[],
         groups: CalendarEventGroup[]
     ): Promise<CalendarEvent[]> {
-        return UserService._generateExamEvent(manager, owner, GroupTitle.FINAL, courses, groups);
+        return UserService._generateExamEvent(manager, ownerId, GroupTitle.FINAL, courses, groups);
     }
 
-    private static async _cleanMidtermExamEvent(
+    // private static async _cleanMidtermExamEvent(
+    //     manager: EntityManager,
+    //     ownerId: number
+    // ): Promise<void> {
+    //     await manager.createQueryBuilder(CalendarEvent, "event")
+    //         .delete()
+    //         .where("event.ownerId = :ownerId", { ownerId: ownerId })
+    //         .andWhere("event.groups = :groups", { groups: [{ title: GroupTitle.MIDTERM, type: EventGroupType.SYSTEM }] })
+    //         .andWhere("event.created = event.modified")
+    //         .execute();
+    // }
+
+    // private static async _cleanFinalExamEvent(
+    //     manager: EntityManager,
+    //     ownerId: number
+    // ): Promise<void> {
+    //     await manager.createQueryBuilder(CalendarEvent, "event")
+    //         .delete()
+    //         .where("event.ownerId = :ownerId", { ownerId: ownerId })
+    //         .andWhere("event.groups = :groups", { groups: [{ title: GroupTitle.FINAL, type: EventGroupType.SYSTEM }] })
+    //         .andWhere("event.created = event.modified")
+    //         .execute();
+    // }
+
+    private static async _cleanEventsByTitle(
         manager: EntityManager,
-        owner: User
+        ownerId: number,
+        title: GroupTitle
     ): Promise<void> {
-        const allMidtermEvents = await manager.find(CalendarEvent, {
-            where: {
-                groups: [{ title: GroupTitle.MIDTERM, type: EventGroupType.SYSTEM, owner: owner }],
-                owner: owner
-            }
+        const events = await manager.findBy(CalendarEvent, {
+            owner: { id: ownerId },
+            groups: { title: title, type: EventGroupType.SYSTEM }
         });
-        const toRemove = allMidtermEvents.filter(({created, modified}) => created.getTime() === modified.getTime());
-        await manager.remove(toRemove);
+        await manager.remove(events.filter(e => dayjs(e.created).isSame(dayjs(e.modified)))); // delete event that is not modified by user
     }
 
-    private static async _cleanFinalExamEvent(
-        manager: EntityManager,
-        owner: User
-    ): Promise<void> {
-        const allFinalEvents = await manager.find(CalendarEvent, {
-            where: {
-                groups: [{ title: GroupTitle.FINAL, type: EventGroupType.SYSTEM, owner: owner }],
-                owner: owner
-            }
-        });
-        const toRemove = allFinalEvents.filter(({created, modified}) => created.getTime() === modified.getTime());
-        await manager.remove(toRemove);
-    }
-
-    private static async _cleanClassEvent(
-        manager: EntityManager,
-        owner: User
-    ): Promise<void> {
-        const allClassEvents = await manager.find(CalendarEvent, {
-            where: {
-                groups: [{ title: GroupTitle.CLASS, type: EventGroupType.COURSE, owner: owner }],
-                owner: owner
-            }
-        });
-        const toRemove = allClassEvents.filter(({created, modified}) => created.getTime() === modified.getTime());
-        await manager.remove(toRemove);
-    }
-
-    private static async _cleanAssignment(
-        manager: EntityManager,
-        owner: User
-    ): Promise<void> {
-        const allAssignments = await manager.find(CalendarEvent, {
-            where: {
-                groups: [{ title: GroupTitle.ASSIGNMENT, type: EventGroupType.SYSTEM, owner: owner }],
-                owner: owner
-            }
-        });
-        const toRemove = allAssignments.filter(({created, modified}) => created.getTime() === modified.getTime());
-        await manager.remove(toRemove);
-    }
+    // private static async _cleanAssignment(
+    //     manager: EntityManager,
+    //     ownerId: number
+    // ): Promise<void> {
+    //     await manager.createQueryBuilder(CalendarEvent, "event")
+    //         .delete()
+    //         .where("event.ownerId = :ownerId", { ownerId: ownerId })
+    //         .andWhere("event.groups = :groups", { groups: [{ title: GroupTitle.ASSIGNMENT, type: EventGroupType.SYSTEM }] })
+    //         .andWhere("event.created = event.modified")
+    //         .execute();
+    // }
 
     private static async _generateAssignment(
         manager: EntityManager,
@@ -297,55 +286,83 @@ export class UserService {
             groups: [assignmentGroup],
             start: new Date(due_at),
             end: new Date(due_at),
-            owner: owner
+            owner: { id: owner.id }
         })));
         return manager.save(assignmentEvents);
     }
 
-    private static async _firstSync(
-        queryRunner: QueryRunner,
-        user: User,
-        courses: CourseInfo[]
-    ): Promise<void> {
-        const manager = queryRunner.manager;
-        const courseGroups = await UserService._generateDefaultGroup(manager, user, courses);
-        await UserService._generateClassEvent(manager, user, courses, courseGroups);
-        await UserService._generateMidtermExamEvent(manager, user, courses, courseGroups);
-        await UserService._generateFinalExamEvent(manager, user, courses, courseGroups);
-    }
+    // private static async _firstSync(
+    //     queryRunner: QueryRunner,
+    //     user: User,
+    //     courses: CourseInfo[]
+    // ): Promise<void> {
+    //     const manager = queryRunner.manager;
+    //     const courseGroups = await UserService._generateDefaultGroup(manager, user, courses);
+    //     await UserService._generateClassEvent(manager, user, courses, courseGroups);
+    //     await UserService._generateMidtermExamEvent(manager, user, courses, courseGroups);
+    //     await UserService._generateFinalExamEvent(manager, user, courses, courseGroups);
+    // }
 
-    private static async _signIn(queryRunner: QueryRunner, { studentNo }: StudentInfo): Promise<JWTPayload> {
-        const user = await UserService._initUserByStudentNo(queryRunner.manager, studentNo);
-        return fJWTPayload(user);
-    }
+    // private static async _signIn(queryRunner: QueryRunner, { studentNo }: StudentInfo): Promise<JWTPayload> {
+    //     const user = await UserService._initUserByStudentNo(queryRunner.manager, studentNo);
+    //     return fJWTPayload(user);
+    // }
 
-    private static async _signUp(
-        reg: RegCMUFetcher, 
-        queryRunner: QueryRunner, 
-        cred: LoginInfo,
-        student: StudentInfo
-    ): Promise<JWTPayload> {
+    public async signUp(cred: LoginInfo): Promise<User> {
+        const reg = new RegCMUFetcher(cred);
+        const student = await reg.getStudent();
         const courses = await reg.getCourses();
-        const user = await UserService._initUserByStudentInfo(queryRunner.manager, student, cred);
-        await UserService._updateUserCourses(queryRunner.manager, user, courses);
-        
-        // First sync
-        await UserService._firstSync(queryRunner, user, courses);
-        
-        return fJWTPayload(user);
+        const user = await this._user.save(
+            this._user.create({
+                givenName: student.givenName,
+                middleName: student.middleName,
+                familyName: student.familyName,
+                studentNo: student.studentNo,
+                CMUUsername: cred.username,
+                CMUPassword: cred.password,
+                mangoToken: ""
+            })
+        );
+        await this._calendarService.createDefaultGroups(user.id, courses);
+        return user;
     }
 
-    public async getUserById(userId: number): Promise<User> {
-        const user = await this._ds.manager.findOneBy(User, { id: userId });
+    // private async _signUp(
+    //     reg: RegCMUFetcher, 
+    //     queryRunner: QueryRunner, 
+    //     cred: LoginInfo,
+    //     student: StudentInfo
+    // ): Promise<User> {
+    //     return this._user.save(
+    //         this._user.create({
+    //             givenName: student.givenName,
+    //             middleName: student.middleName,
+    //             familyName: student.familyName,
+    //             studentNo: student.studentNo,
+    //             CMUUsername: cred.username,
+    //             CMUPassword: cred.password,
+    //             mangoToken: ""
+    //         })
+    //     );
+    //     this._calendarService.createDefaultGroups(user.id);
+    //     return user;
+    // }
+
+    public async getUserById(userId: number, params: { credential?: boolean } = {}): Promise<User> {
+        const user = await this._user.findOne({ 
+            where: { id: userId }, 
+            select: params.credential ? { CMUUsername: true, CMUPassword: true, mangoToken: true } : undefined
+        });
         if (!user)
             throw new Error("User not found.");
+        if (params.credential) {
+            user.CMUPassword = user.decrypt(user.CMUPassword);
+            user.mangoToken = user.decrypt(user.mangoToken);
+        }
         return user;
     }
 
     public async updateMangoToken(userId: number, token: string): Promise<void> {
-        const user = await this._user.findOneBy({ id: userId });
-        if (!user)
-            throw new Error("User not found.");
         const mango = new MangoClient(token);
         if (!(await mango.validate()))
             throw new Error("Invalid mango token.");
@@ -386,13 +403,13 @@ export class UserService {
         }));
     }
 
-    public async deleteFCMToken(userId: number, tokenId: string): Promise<void> {
-        const result = await this._ds.manager.delete(Session, {
+    public async deleteFCMToken(userId: number, tokenId: number): Promise<void> {
+        const result = await this._session.delete({
             id: tokenId,
             owner: { id: userId }
         });
         if (result.affected !== 1)
-            throw new Error("Unable to delete given FCM token.");
+            throw new Error("Unable to delete FCM token.");
     }
 
     public async getAllUsers(params: { includeSensitiveData?: boolean }): Promise<User[]> {
@@ -415,35 +432,21 @@ export class UserService {
         return await this._ds.getRepository(User).find({});
     }
 
-    public async syncClassAndExam(ownerId: number): Promise<void> {
-        const u = await this._user.findOne({
-            where: { id: ownerId },
-            select: {
-                id: true, 
-                CMUUsername: true, 
-                CMUPassword: true
-            }
-        });
-        if (!u)
-            throw new Error(UserServiceError.USER_NOT_FOUND);
-        const groupRepo = this._ds.getRepository(CalendarEventGroup);
-        const courseGroups = await groupRepo.findBy({ owner: { id: ownerId } });
+    public async syncClassAndExam(ownerId: number, courses: CourseInfo[]): Promise<void> {
+        const courseGroups = await this._calendarService.getGroupsByOwner(ownerId);
         
         const qr = this._ds.createQueryRunner();
         const m = qr.manager;
         await qr.connect();
         await qr.startTransaction();
         try {
-            await UserService._cleanClassEvent(m, u);
-            await UserService._cleanMidtermExamEvent(m, u);
-            await UserService._cleanFinalExamEvent(m, u);
-            
-            const reg = new RegCMUFetcher({ username: u.decrypt(u.CMUUsername), password: u.decrypt(u.CMUPassword) });
-            const courses = await reg.getCourses();
+            await UserService._cleanEventsByTitle(m, ownerId, GroupTitle.CLASS);
+            await UserService._cleanEventsByTitle(m, ownerId, GroupTitle.MIDTERM);
+            await UserService._cleanEventsByTitle(m, ownerId, GroupTitle.FINAL);
 
-            await UserService._generateClassEvent(m, u, courses, courseGroups);
-            await UserService._generateMidtermExamEvent(m, u, courses, courseGroups);
-            await UserService._generateFinalExamEvent(m, u, courses, courseGroups);
+            await UserService._generateClassEvent(m, ownerId, courses, courseGroups);
+            await UserService._generateMidtermExamEvent(m, ownerId, courses, courseGroups);
+            await UserService._generateFinalExamEvent(m, ownerId, courses, courseGroups);
             await qr.commitTransaction();
         } catch(e) {
             await qr.rollbackTransaction();
@@ -452,12 +455,7 @@ export class UserService {
     }
 
     public async syncAssignmentAndQuiz(ownerId: number): Promise<void> {
-        const u = await this._user.findOne({
-            where: { id: ownerId },
-            select: { mangoToken: true }
-        });
-        if (!u)
-            throw new Error(UserServiceError.USER_NOT_FOUND);
+        const u = await this.getUserById(ownerId, { credential: true });
         if (!u.mangoToken)
             throw new Error(UserServiceError.NO_MANGO_TOKEN);
 
@@ -471,7 +469,7 @@ export class UserService {
             const courses = await client.getCourses();
             const assignments = (await Promise.all(courses.map(c => client.getAssignments(c.id)))).flat();
 
-            await UserService._cleanAssignment(m, u);
+            // await UserService._cleanAssignment(m, u);
             await UserService._generateAssignment(m, u, assignments);
             await qr.commitTransaction();
         } catch(e) {
@@ -479,6 +477,15 @@ export class UserService {
             throw e;
         }
     }
+
+    public async syncEvents(ownerId: number): Promise<void> {
+        const u = await this.getUserById(ownerId, { credential: true });
+        const reg = new RegCMUFetcher({ username: u.CMUUsername, password: u.CMUPassword });
+        const courses = await reg.getCourses();
+        await this._calendarService.createDefaultGroups(ownerId, courses);
+        await this.syncClassAndExam(ownerId, courses);
+        // await this.syncAssignmentAndQuiz(ownerId);
+    }   
 }
 
 export enum UserServiceError {

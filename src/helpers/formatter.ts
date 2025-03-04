@@ -3,7 +3,7 @@ import { SharedEvent } from "../models/sharedEvent.entity.js";
 import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
-import { JWTPayload } from "../types/global.js";
+import { JWTPayload, Pagination } from "../types/global.js";
 import { Notification } from "../models/notification.entity.js";
 import { CalendarEventType, NotificationType } from "../types/enums.js";
 
@@ -158,4 +158,31 @@ export function fCMUUsername(CMUMail: string): string {
 
 export function fCMUEmail(CMUUsername: string): string {
     return `${CMUUsername}@cmu.ac.th`;
+}
+
+export function fSharedEventPagination(
+    pagination: Pagination<SharedEvent>
+): swagger.Pagination<swagger.SharedEvent> {
+    const result = {
+        sharedEvents: pagination.items.map(fSharedEvent),
+        pagination: {
+            total: pagination.total,
+            offset: pagination.offset,
+            limit: pagination.limit
+        }
+    };
+    return result;
+}
+
+export function fCalendarEventPagination(
+    pagination: Pagination<CalendarEvent>
+): swagger.Pagination<swagger.CalendarEvent> {
+    return {
+        calendar: pagination.items.map(fCalendarEvent),
+        pagination: {
+            total: pagination.total,
+            offset: pagination.offset,
+            limit: pagination.limit
+        }
+    };
 }

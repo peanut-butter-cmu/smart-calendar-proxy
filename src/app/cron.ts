@@ -5,9 +5,10 @@ import { DataSource } from "typeorm";
 import { CalendarService } from "../services/calendar.service.js";
 import { NotificationService } from "../services/notification.service.js";
 import { NotificationType } from "../types/enums.js";
+import { UserService } from "../services/user.service.js";
 
 export function initCronJobs(ds: DataSource) {
-    const calen = new CalendarService(ds);
+    const calen = new CalendarService(ds, new UserService(ds));
     const noti = new NotificationService(ds);
 
     cron.schedule("*/10 * * * * *", async () => {
@@ -35,7 +36,7 @@ export function initCronJobs(ds: DataSource) {
         }
     });
 
-    cron.schedule("*/10 * * * * *", async () => {
+    cron.schedule("* * * *", async () => {
         const now = new Date();
         const tenSec = dayjs(now).add(10, "seconds").toDate();
         console.log("Cron Job: Time", new Date().toISOString());

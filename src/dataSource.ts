@@ -12,5 +12,13 @@ export const dataSource = new DataSource({
     migrations: [ 
         (process.env.NODE_ENV === "development") ? 
         "./src/migrations/*-migration.ts" : "./dist/migrations/*-migration.js"
-    ]
+    ],
+    cache: process.env.NODE_ENV === "development" ? {
+        type: "redis",
+        options: {
+            host: process.env.REDIS_HOST,
+            port: parseInt(process.env.REDIS_PORT!),
+            password: process.env.REDIS_PASSWORD
+        }
+    } : undefined
 });
