@@ -4,6 +4,7 @@ import { User } from "../models/user.entity.js";
 import { MangoClient } from "../client/mango.js";
 import { Session } from "../models/session.entity.js";
 import { CalendarService } from "./calendar.service.js";
+import { SyncService } from "./sync.service.js";
 
 export type LoginInfo = { username: string; password: string; };
 
@@ -15,13 +16,15 @@ export class UserService {
     private _ds: DataSource;
     private _user: Repository<User>;
     private _calendarService: CalendarService;
+    private _syncService: SyncService;
     private _session: Repository<Session>;
 
-    constructor(dataSource: DataSource, services: { calendarService?: CalendarService } = {}) {
+    constructor(dataSource: DataSource, services: { calendarService?: CalendarService, syncService?: SyncService } = {}) {
         this._ds = dataSource;
         this._user = dataSource.getRepository(User);
         this._session = dataSource.getRepository(Session);
         this._calendarService = services.calendarService || new CalendarService(dataSource, this);
+        this._syncService = services.syncService || new SyncService(dataSource, { userService: this, calendarService: this._calendarService });
     }
 
     private async _isUserExist(
@@ -61,6 +64,7 @@ export class UserService {
             })
         );
         await this._calendarService.createDefaultGroups(user.id, courses);
+        await this._syncService.syncUserEvents(user.id);
         return user;
     }
 
