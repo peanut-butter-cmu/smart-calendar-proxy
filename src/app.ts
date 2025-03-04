@@ -20,8 +20,19 @@ dayjs.tz.setDefault(process.env.TZ);
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS?.split(",") || [];
 const port = process.env.APP_PORT || 3000;
 const app = express();
-const corsMiddleware = cors({ origin: allowedOrigins, credentials: true });
-console.log(allowedOrigins);
+const corsMiddleware = cors({ // result from GPT
+  origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, origin); // 👈 Return the origin instead of `true`
+      } else {
+          callback(new Error("Not allowed by CORS"));
+      }
+  },
+  credentials: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  allowedHeaders: "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+});
+
 
 app.use(express.json());
 app.use(corsMiddleware);
