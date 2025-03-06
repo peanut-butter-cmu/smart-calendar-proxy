@@ -184,6 +184,8 @@ export function findTimeSlotInRange(
             start = start.add(1, params.repeat.type);
             date = start;
             end = end.add(1, params.repeat.type);
+        } else {
+            break;
         }
     }
     if (timeSlots.length !== (params.repeat?.count || 0) + 1)

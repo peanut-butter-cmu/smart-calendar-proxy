@@ -14,22 +14,18 @@ import { Pagination } from "../types/global.js";
 export class SharedCalendarService {
     private _shared: Repository<SharedEvent>;
     private _invite: Repository<SharedEventInvite>;
-    // private _user: Repository<User>;
     private _event: Repository<CalendarEvent>;
     private _notificationService: NotificationService;
     private _calendarService: CalendarService;
     private _userService: UserService;
-    // private _ds: DataSource;
 
     constructor(dataSource: DataSource) {
         this._shared = dataSource.getRepository(SharedEvent);
         this._invite = dataSource.getRepository(SharedEventInvite);
-        // this._user = dataSource.getRepository(User);
         this._event = dataSource.getRepository(CalendarEvent);
         this._notificationService = new NotificationService(dataSource);
         this._userService = new UserService(dataSource);
         this._calendarService = new CalendarService(dataSource, this._userService);
-        // this._ds = dataSource;
     }
 
     public async getSharedEventsByOwner(
@@ -65,7 +61,8 @@ export class SharedCalendarService {
         eventId: number, 
         params: { 
             status?: SharedEventStatus,
-            relations?: (keyof SharedEvent)[] 
+            relations?: (keyof SharedEvent)[],
+            owned?: boolean
         } = {}
     ): Promise<SharedEvent> {
         const user = await this._userService.getUserById(ownerId);
@@ -73,7 +70,7 @@ export class SharedCalendarService {
         const event = await this._shared.findOne({
             where: [
                 { id: eventId, status: condition, owner: { id: ownerId } }, 
-                { id: eventId, status: condition, invites: { email: user.CMUEmail } },
+                params.owned ? { id: eventId, status: condition, invites: { email: user.CMUEmail } } : undefined
             ],
             relations: params.relations || ["invites", "members", "events", "events.owner", "owner"],
             order: { id: "DESC" }
@@ -202,7 +199,7 @@ export class SharedCalendarService {
     }
 
     public async arrangeSharedEventByID(ownerId: number, eventId: number): Promise<SharedEvent> {
-        const shared = await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.PENDING });
+        const shared = await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.PENDING, owned: true });
         const busyEvents = await this._event
             .createQueryBuilder("event")
             .leftJoinAndSelect("event.owner", "owner")
@@ -246,7 +243,7 @@ export class SharedCalendarService {
         );
         if (!result.affected)
             throw new Error(SharedEventServiceError.SHARED_EVENT_NOT_FOUND);
-        const event = await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.SAVED });
+        const event = await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.SAVED, owned: true });
         await Promise.all(
             (event.events || []).map(evnt => this._event.update(
                 { id: evnt.id }, 
@@ -258,7 +255,7 @@ export class SharedCalendarService {
             NotificationType.MEETING_SCHEDULED,
             { eventId: event.id }
         );
-        return await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.SAVED });
+        return await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.SAVED, owned: true });
     }
 }
 
