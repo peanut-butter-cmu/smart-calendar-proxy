@@ -54,6 +54,7 @@ describe("findTimeSlotInRange", () => {
 
         expect(result).toHaveLength(3);
         // Check if dates are one week apart
+        console.log(result[1].start, result[0].start);
         expect(dayjs(result[1].start).diff(result[0].start, "week")).toBe(1);
         expect(dayjs(result[2].start).diff(result[1].start, "week")).toBe(1);
     });
