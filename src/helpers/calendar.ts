@@ -167,6 +167,7 @@ export function findTimeSlotInRange(
     let start = dayjs(params.startDate);
     let end = dayjs(params.endDate);
     const timeSlots = [];
+    let repeatCount = params.repeat?.count || 0;
     for (let date = dayjs(params.startDate); date.isBefore(end) || date.isSame(end, "day"); date = date.add(1, "day")) {
         if (!params.idealDays.includes(date.day()))
             continue;
@@ -180,10 +181,11 @@ export function findTimeSlotInRange(
         if (!timeSlot)
             continue;
         timeSlots.push(timeSlot);
-        if (params.repeat?.count) {
+        if (repeatCount > 0) {
             start = start.add(1, params.repeat.type);
             date = start;
             end = end.add(1, params.repeat.type);
+            repeatCount--;
         } else {
             break;
         }

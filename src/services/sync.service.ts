@@ -165,6 +165,8 @@ export class SyncService {
         } catch(e) {
             await qr.rollbackTransaction();
             throw e;
+        } finally {
+            await qr.release();
         }
     }
 
@@ -193,6 +195,8 @@ export class SyncService {
         } catch(e) {
             await qr.rollbackTransaction();
             throw e;
+        } finally {
+            await qr.release();
         }
     }
 
