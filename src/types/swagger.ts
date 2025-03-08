@@ -90,9 +90,9 @@ export type SharedEvent = {
         dailyEndMin: number;
     };
     members: {
-        givenName: string;
+        firstName: string;
         middleName: string | null;
-        familyName: string;
+        lastName: string;
         sharedEventOwner: boolean;
         events: SharedCalendarEvent[];
     }[];
@@ -123,9 +123,9 @@ export type SharedEventNew = {
         dailyEndMin: number 
     };
     members: {
-        givenName: string;
+        firstName: string;
         middleName: string | null;
-        familyName: string;
+        lastName: string;
         owner: boolean;
     }[];
     invites: string[];

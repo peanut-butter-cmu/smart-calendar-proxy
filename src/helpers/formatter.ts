@@ -86,9 +86,9 @@ export function fSharedEvent(event: SharedEvent): swagger.SharedEvent {
         idealDays: event.idealDays,
         idealTimeRange: fIdealTimeRange(event.idealTimeRange),
         members: undefArr(event.members).map(member => ({
-            givenName: member.givenName,
+            firstName: member.givenName,
             middleName: member.middleName,
-            familyName: member.familyName,
+            lastName: member.familyName,
             sharedEventOwner: member.id === event.owner.id,
             events: undefArr(event.events)
                     .filter(event => event.owner.id === member.id)
