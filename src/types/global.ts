@@ -12,3 +12,11 @@ export type Pagination<T> = {
     limit: number;
     offset: number;
 };
+
+export type ICSEvent = {
+    uid: string;
+    title: string;
+    start: string;
+    end: string;
+};
+

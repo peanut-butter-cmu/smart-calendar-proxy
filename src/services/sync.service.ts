@@ -1,5 +1,5 @@
 import { MangoClient } from "../client/mango.js";
-import { DataSource, EntityManager } from "typeorm";
+import { DataSource, EntityManager, Repository } from "typeorm";
 import { UserService } from "./user.service.js";
 import { CalendarServiceError, CalendarService } from "./calendar.service.js";
 import { CourseInfo } from "../fetcher/reg-cmu.js";
@@ -7,7 +7,7 @@ import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
 import { eachDayOfInterval } from "date-fns";
 import { createStartEndInRegDate } from "../helpers/calendar.js";
-import { EventGroupType, GroupTitle } from "../types/enums.js";
+import { CalendarEventType, EventGroupType, GroupTitle } from "../types/enums.js";
 import { User } from "../models/user.entity.js";
 import { RegCMUFetcher } from "../fetcher/reg-cmu.js";
 import { MangoAssignment, MangoCourse } from "../client/mango.js";
@@ -16,13 +16,21 @@ import axios from "axios";
 import { parseIcsCalendar } from "ts-ics";
 import { Course } from "../models/course.entity.js";
 import { fMangoCourseID } from "../helpers/formatter.js";
+import { promptGlobalEvents } from "../helpers/prompt.js";
+import { OpenAI } from "openai";
+import { GlobalEvent } from "../models/globalEvent.entity.js";
+import { ICSEvent } from "../types/global.js";
 
 export class SyncService {
     private _userService: UserService;
     private _calendarService: CalendarService;
+    private _globalEvent: Repository<GlobalEvent>;
+
+
     constructor(private readonly _ds: DataSource, services: { userService?: UserService, calendarService?: CalendarService } = {}) {
         this._userService = services.userService || new UserService(_ds);
         this._calendarService = services.calendarService || new CalendarService(_ds, this._userService);
+        this._globalEvent = _ds.getRepository(GlobalEvent);
     }
     
     private async _generateClassEvent(
@@ -206,6 +214,7 @@ export class SyncService {
         const reg = new RegCMUFetcher({ username: u.CMUUsername, password: u.CMUPassword });
         const courses = await reg.getCourses();
         await this._calendarService.createDefaultGroups(userId, courses);
+        await this.syncCMUEvents(userId);
         await this.syncUserClassAndExam(userId, courses);
         if (u.mangoToken) {
             await this.syncCourse(userId);
@@ -256,16 +265,59 @@ export class SyncService {
         await this._updateUserCourses(this._ds.manager, userId, courses);
     }
 
+    private async _generateCMUEvents(
+        manager: EntityManager,
+        userId: number
+    ): Promise<void> {
+        const globalEvents = await this._globalEvent.find();
+        const cmuGroup = await this._calendarService.getGroupByTitle(userId, GroupTitle.CMU);
+        await manager.save(
+            manager.create(CalendarEvent, globalEvents.map(e => ({
+                title: e.title,
+                start: new Date(e.start),
+                end: new Date(e.end),
+                groups: [{ id: cmuGroup.id }],
+                owner: { id: userId },
+                type: CalendarEventType.NON_SHARED
+            })))
+        );
+    }
+
+    public async syncCMUEvents(userId: number): Promise<void> {
+        const qr = this._ds.createQueryRunner();
+        await qr.connect();
+        await qr.startTransaction();
+        try {
+            await this._cleanEventsByTitle(qr.manager, userId, GroupTitle.CMU);
+            await this._generateCMUEvents(qr.manager, userId);
+            await qr.commitTransaction();
+            await qr.release();
+        } catch(e) {
+            await qr.rollbackTransaction();
+            await qr.release();
+            throw e;
+        }
+    }
+
     public async syncGlobalEvents(): Promise<void> {
         if (process.env.NODE_ENV !== "development") throw new Error("Not allowed in production.");
         const response = await axios.get(process.env.GLOBAL_EVENTS_URL!);
         const calendar = parseIcsCalendar(response.data);
-        console.log(JSON.stringify(calendar.events?.map(e => ({
-            uid: e.uid,
-            summary: e.summary,
-            start: e.start.date,
-            // subtract 1 day because ics is show day after actual end date
-            end: dayjs(e.end.date).subtract(1, "day").toDate(),
-        }))));
+        const prompt = promptGlobalEvents(calendar);
+
+        // send prompt to openai
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+            baseURL: process.env.OPENAI_BASE_URL
+        });
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+        });
+        const result = JSON.parse(completion.choices[0].message.content!) as { events: ICSEvent[] };
+        console.log(result);
+        const events = await this._globalEvent.findBy(result.events.map(e => ({ uid: e.uid })));
+        await this._globalEvent.save(this._globalEvent.create(result.events.filter(e => !events.find(ev => ev.uid === e.uid))));
     }
 }

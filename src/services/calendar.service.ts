@@ -75,6 +75,7 @@ export class CalendarService {
             { title: GroupTitle.CLASS },
             { title: GroupTitle.MIDTERM },
             { title: GroupTitle.FINAL },
+            { title: GroupTitle.CMU },
         ];
         const courseGroups = courses.map(c => ({ title: c.title }));
         const user = await this._userService.getUserById(userId, { credential: true });
