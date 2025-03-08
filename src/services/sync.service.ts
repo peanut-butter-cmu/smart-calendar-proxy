@@ -342,7 +342,20 @@ export class SyncService {
         const cmuResult = JSON.parse(completion.choices[0].message.content!) as { events: ICSEvent[] };
         console.log(cmuResult);
         const cmuEvents = await this._globalEvent.findBy(cmuResult.events.map(e => ({ uid: e.uid })));
-        await this._globalEvent.save(this._globalEvent.create(cmuResult.events.filter(e => !cmuEvents.find(ev => ev.uid === e.uid))));
+        await this._globalEvent.save(
+            this._globalEvent.create(
+                cmuResult.events
+                .filter(e => !cmuEvents.find(ev => ev.uid === e.uid))
+                .map(e => ({
+                    uid: e.uid,
+                    title: e.title,
+                    start: e.start,
+                    end: e.end,
+                    type: GlobalEventType.CMU
+                }))
+            )
+        );
+
 
         // send holiday calendar to openai
         const holidayCompletion = await openai.chat.completions.create({
@@ -353,6 +366,18 @@ export class SyncService {
         const holidayResult = JSON.parse(holidayCompletion.choices[0].message.content!) as { events: ICSEvent[] };
         console.log(holidayResult);
         const holidayEvents = await this._globalEvent.findBy(holidayResult.events.map(e => ({ uid: e.uid })));
-        await this._globalEvent.save(this._globalEvent.create(holidayResult.events.filter(e => !holidayEvents.find(ev => ev.uid === e.uid))));
+        await this._globalEvent.save(
+            this._globalEvent.create(
+                holidayResult.events
+                .filter(e => !holidayEvents.find(ev => ev.uid === e.uid))
+                .map(e => ({
+                    uid: e.uid, 
+                    title: e.title,
+                    start: e.start,
+                    end: e.end,
+                    type: GlobalEventType.HOLIDAY
+                }))
+            )
+        );
     }
 }
