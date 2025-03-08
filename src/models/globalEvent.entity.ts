@@ -1,4 +1,9 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+
+export enum GlobalEventType {
+    CMU = "CMU",
+    HOLIDAY = "HOLIDAY"
+}
 
 @Entity()
 export class GlobalEvent {
@@ -15,4 +20,8 @@ export class GlobalEvent {
 
     @Column()
     end: Date;
+
+    @Index()
+    @Column()
+    type: GlobalEventType;
 }
