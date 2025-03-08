@@ -52,5 +52,15 @@ export function initCronJobs(ds: DataSource) {
         }
     });
 
+    // run every month and when app startup
+    cron.schedule("0 0 1 * *", async () => {
+        console.log("Sync Global Events: Time", new Date().toISOString());
+        try {
+            await sync.syncGlobalEvents();
+        } catch(e) {
+            console.error("Sync Global Events: Error", e);
+        }
+    });
+
     console.log("Cron jobs initialized");
 };

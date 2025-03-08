@@ -60,6 +60,12 @@ function createUserRouter(dataSource: DataSource) {
         }),
         userController.syncUserEvents
     );
+    app.post("/sync/global",
+        authorizationValidate,
+        authorizationReport,
+        userController.isAdmin,
+        userController.syncGlobalEvents
+    );
 
     // for development
     if (process.env.NODE_ENV === "development") {

@@ -300,7 +300,6 @@ export class SyncService {
     }
 
     public async syncGlobalEvents(): Promise<void> {
-        if (process.env.NODE_ENV !== "development") throw new Error("Not allowed in production.");
         const response = await axios.get(process.env.GLOBAL_EVENTS_URL!);
         const calendar = parseIcsCalendar(response.data);
         const prompt = promptGlobalEvents(calendar);

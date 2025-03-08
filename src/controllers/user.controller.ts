@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { DataSource } from "typeorm";
 import { fJWTPayload, fUser } from "../helpers/formatter.js";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { JWTRequest } from "../types/global.js";
 import { UserService, LoginError } from "../services/user.service.js";
 import * as swagger from "../types/swagger.js";
@@ -128,6 +128,21 @@ export class UserController {
             res.sendStatus(204);
         } catch (error) {
             res.status(400).send({ message: (error as Error).message });
+        }
+    }
+
+    isAdmin = async (
+        req: JWTRequest,
+        res: Response<void | swagger.Error>,
+        next: NextFunction
+    ) => {
+        try {
+            const user = await this._userService.getUserById(req.auth.id);
+            if (!process.env.ADMIN_CMU_EMAILS.split(",").includes(user.CMUEmail))
+                throw new Error("Unauthorized.");
+            next();
+        } catch (error) {
+            res.status(401).send({ message: (error as Error).message });
         }
     }
 }
