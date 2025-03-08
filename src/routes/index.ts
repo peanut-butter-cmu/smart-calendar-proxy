@@ -5,8 +5,9 @@ import { createUserRouter } from "./user.route.js";
 import { createNotificationRouter } from "./notification.route.js";
 
 export function createRouter(dataSource: DataSource) {
-    return Router()
-        .use(createUserRouter(dataSource))
-        .use(createCalendarRouter(dataSource))
-        .use(createNotificationRouter(dataSource));
+    const router = Router();
+    router.use("/api", createUserRouter(dataSource));
+    router.use("/api", createCalendarRouter(dataSource));
+    router.use("/api", createNotificationRouter(dataSource));
+    return router;
 }
