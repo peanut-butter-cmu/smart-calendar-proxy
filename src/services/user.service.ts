@@ -5,7 +5,8 @@ import { MangoClient } from "../client/mango.js";
 import { Session } from "../models/session.entity.js";
 import { CalendarService } from "./calendar.service.js";
 import { SyncService } from "./sync.service.js";
-
+import { SharedCalendarService } from "./sharedCalendar.service.js";
+import { NotificationService } from "./notification.service.js";
 export type LoginInfo = { username: string; password: string; };
 
 export enum LoginError {
@@ -17,14 +18,23 @@ export class UserService {
     private _user: Repository<User>;
     private _calendarService: CalendarService;
     private _syncService: SyncService;
+    private _sharedCalendarService: SharedCalendarService;
     private _session: Repository<Session>;
+    private _notificationService: NotificationService;
 
-    constructor(dataSource: DataSource, services: { calendarService?: CalendarService, syncService?: SyncService } = {}) {
+    constructor(dataSource: DataSource, services: { 
+        calendarService?: CalendarService, 
+        syncService?: SyncService, 
+        sharedCalendarService?: SharedCalendarService, 
+        notificationService?: NotificationService 
+    } = {}) {
         this._ds = dataSource;
         this._user = dataSource.getRepository(User);
         this._session = dataSource.getRepository(Session);
         this._calendarService = services.calendarService || new CalendarService(dataSource, this);
         this._syncService = services.syncService || new SyncService(dataSource, { userService: this, calendarService: this._calendarService });
+        this._notificationService = services.notificationService || new NotificationService(dataSource, { userService: this });
+        this._sharedCalendarService = services.sharedCalendarService || new SharedCalendarService(dataSource, { userService: this, calendarService: this._calendarService, notificationService: this._notificationService });
     }
 
     private async _isUserExist(
@@ -65,6 +75,7 @@ export class UserService {
         );
         await this._calendarService.createDefaultGroups(user.id, courses);
         await this._syncService.syncUserEvents(user.id);
+        await this._notificationService.notifyNewUser(user.id);
         return user;
     }
 
@@ -148,6 +159,13 @@ export class UserService {
             });
         }
         return await this._ds.getRepository(User).find({});
+    }
+
+    public async deleteUser(userId: number): Promise<void> {
+        const user = await this.getUserById(userId);
+        await this._calendarService.deleteAllEvents(userId);
+        await this._sharedCalendarService.deleteAllEvents(userId);
+        await this._user.remove(user);
     }
 }
 

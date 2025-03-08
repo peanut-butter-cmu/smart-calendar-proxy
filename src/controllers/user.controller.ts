@@ -118,4 +118,16 @@ export class UserController {
             res.status(400).send({ message: (error as Error).message });
         }
     }
+
+    deleteUser = async (
+        req: JWTRequest,
+        res: Response<void | swagger.Error>
+    ) => {
+        try {
+            await this._userService.deleteUser(req.auth.id);
+            res.sendStatus(204);
+        } catch (error) {
+            res.status(400).send({ message: (error as Error).message });
+        }
+    }
 }

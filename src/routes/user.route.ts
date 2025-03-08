@@ -60,9 +60,16 @@ function createUserRouter(dataSource: DataSource) {
         }),
         userController.syncUserEvents
     );
+
+    // for development
     if (process.env.NODE_ENV === "development") {
         app.post("/dev/sync/global",
             userController.syncGlobalEvents
+        );
+        app.delete("/dev/user",
+            authorizationValidate,
+            authorizationReport,
+            userController.deleteUser
         );
     }
 

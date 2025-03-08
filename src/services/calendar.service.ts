@@ -213,6 +213,13 @@ export class CalendarService {
             )`, { start, end })
             .getMany();
     }
+
+    public async deleteAllEvents(userId: number): Promise<void> {
+        const events = await this._event.find({
+            where: { owner: { id: userId } }
+        });
+        await this._event.remove(events);
+    }
 }
 
 export enum CalendarError {

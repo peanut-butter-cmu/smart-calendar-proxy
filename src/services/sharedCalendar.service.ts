@@ -19,13 +19,13 @@ export class SharedCalendarService {
     private _calendarService: CalendarService;
     private _userService: UserService;
 
-    constructor(dataSource: DataSource) {
+    constructor(dataSource: DataSource, services: { userService?: UserService, calendarService?: CalendarService, notificationService?: NotificationService } = {}) {
         this._shared = dataSource.getRepository(SharedEvent);
         this._invite = dataSource.getRepository(SharedEventInvite);
         this._event = dataSource.getRepository(CalendarEvent);
-        this._notificationService = new NotificationService(dataSource);
-        this._userService = new UserService(dataSource);
-        this._calendarService = new CalendarService(dataSource, this._userService);
+        this._notificationService = services.notificationService || new NotificationService(dataSource, { userService: this._userService });
+        this._userService = services.userService || new UserService(dataSource);
+        this._calendarService = services.calendarService || new CalendarService(dataSource, this._userService);
     }
 
     public async getSharedEventsByOwner(
@@ -264,15 +264,11 @@ export class SharedCalendarService {
         return await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.SAVED, owned: true });
     }
 
-    public async createMissingInvites(ownerId: number): Promise<void> {
-        const user = await this._userService.getUserById(ownerId);
-        const sharedEvents = await this.getSharedEventsByOwner(ownerId, { noPagination: true });
-        const invites = await this._invite.findBy(sharedEvents.items.map(sh => ({ event: { id: sh.id } })));
-        const missingInvites = sharedEvents.items.filter(sh => !invites.some(i => i.event.id === sh.id));
-        await this._invite.save(missingInvites.map(sh => this._invite.create({
-            event: { id: sh.id },
-            email: user.CMUEmail
-        })));
+    public async deleteAllEvents(userId: number): Promise<void> {
+        const events = await this._event.find({
+            where: { owner: { id: userId } }
+        });
+        await this._event.remove(events);
     }
 }
 
