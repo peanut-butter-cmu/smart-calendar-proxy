@@ -4,6 +4,7 @@ import { fcmTokenSchema } from "./schema/user.schema.js";
 import { UserController } from "../controllers/user.controller.js";
 import { DataSource } from "typeorm";
 import { authorizationReport, createAuthorizationValidator, validationReport } from "../helpers/routes.js";
+import { rateLimit } from "express-rate-limit";
 
 function createUserRouter(dataSource: DataSource) {
     const app = Router();
@@ -15,12 +16,6 @@ function createUserRouter(dataSource: DataSource) {
         body("password").notEmpty().withMessage("`password` must not be empty."),
         validationReport,
         userController.authenticate
-    );
-    app.post("/user/signin", 
-        body("username").notEmpty().withMessage("`username` must not be empty."),
-        body("password").notEmpty().withMessage("`password` must not be empty."),
-        validationReport,
-        userController.signIn
     );
     app.get("/user/me",
         authorizationValidate,
@@ -53,6 +48,36 @@ function createUserRouter(dataSource: DataSource) {
         validationReport,
         userController.deleteFCMToken
     );
+    app.post("/user/sync",
+        authorizationValidate,
+        authorizationReport,
+        rateLimit({
+            windowMs: 60 * 60 * 1000, // 1 hour
+            max: 5,
+            message: {
+                error: "Too many requests, please try again later."
+            }
+        }),
+        userController.syncUserEvents
+    );
+    app.post("/sync/global",
+        authorizationValidate,
+        authorizationReport,
+        userController.isAdmin,
+        userController.syncGlobalEvents
+    );
+
+    // for development
+    if (process.env.NODE_ENV === "development") {
+        app.post("/dev/sync/global",
+            userController.syncGlobalEvents
+        );
+        app.delete("/dev/user",
+            authorizationValidate,
+            authorizationReport,
+            userController.deleteUser
+        );
+    }
 
     return app;
 }

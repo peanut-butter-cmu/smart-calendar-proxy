@@ -3,7 +3,7 @@ import { SharedEvent } from "../models/sharedEvent.entity.js";
 import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { User } from "../models/user.entity.js";
 import * as swagger from "../types/swagger.js";
-import { JWTPayload } from "../types/global.js";
+import { JWTPayload, Pagination } from "../types/global.js";
 import { Notification } from "../models/notification.entity.js";
 import { CalendarEventType, NotificationType } from "../types/enums.js";
 
@@ -86,9 +86,9 @@ export function fSharedEvent(event: SharedEvent): swagger.SharedEvent {
         idealDays: event.idealDays,
         idealTimeRange: fIdealTimeRange(event.idealTimeRange),
         members: undefArr(event.members).map(member => ({
-            givenName: member.givenName,
+            firstName: member.givenName,
             middleName: member.middleName,
-            familyName: member.familyName,
+            lastName: member.familyName,
             sharedEventOwner: member.id === event.owner.id,
             events: undefArr(event.events)
                     .filter(event => event.owner.id === member.id)
@@ -124,19 +124,19 @@ export function fUser(user: User): swagger.User {
 export function fNotificationData({ type, data }: Notification): { 
     type: swagger.NotificationType.EVENT_CREATED | swagger.NotificationType.EVENT_SCHEDULED | 
           swagger.NotificationType.EVENT_DELETED | swagger.NotificationType.EVENT_REMINDER,
-    data: { eventId: number }
+    data: { eventId: number, eventTitle: string }
  } | { 
     type: swagger.NotificationType.INVITE_ACCEPTED | swagger.NotificationType.INVITE_REJECTED, 
     data: { email: string } 
 } {
     if (type === NotificationType.EVENT_CREATED)
-        return { type: swagger.NotificationType.EVENT_CREATED, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_CREATED, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.MEETING_SCHEDULED)
-        return { type: swagger.NotificationType.EVENT_SCHEDULED, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_SCHEDULED, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.EVENT_DELETED)
-        return { type: swagger.NotificationType.EVENT_DELETED, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_DELETED, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.EVENT_REMINDER)
-        return { type: swagger.NotificationType.EVENT_REMINDER, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_REMINDER, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.INVITE_ACCEPTED)
         return { type: swagger.NotificationType.INVITE_ACCEPTED, data: { email: data.email } };
     else if (type === NotificationType.INVITE_REJECTED)
@@ -158,4 +158,44 @@ export function fCMUUsername(CMUMail: string): string {
 
 export function fCMUEmail(CMUUsername: string): string {
     return `${CMUUsername}@cmu.ac.th`;
+}
+
+export function fSharedEventPagination(
+    pagination: Pagination<SharedEvent>
+): swagger.Pagination<swagger.SharedEvent> {
+    const result = {
+        sharedEvents: pagination.items.map(fSharedEvent),
+        pagination: {
+            total: pagination.total,
+            offset: pagination.offset,
+            limit: pagination.limit
+        }
+    };
+    return result;
+}
+
+export function fCalendarEventPagination(
+    pagination: Pagination<CalendarEvent>
+): swagger.Pagination<swagger.CalendarEvent> {
+    return {
+        calendar: pagination.items.map(fCalendarEvent),
+        pagination: {
+            total: pagination.total,
+            offset: pagination.offset,
+            limit: pagination.limit
+        }
+    };
+}
+
+/**
+ * Extract the first 6 course code from course name
+ * @param courseName - The name of the course
+ * @returns The first 6 course no.
+ * @throws If the course name does not contain a valid course code
+ */
+export function fMangoCourseID(courseName: string): string {
+    const match = courseName.match(/^\d{6}/);
+    if (!match)
+        throw new Error("Invalid course name.");
+    return match[0];
 }

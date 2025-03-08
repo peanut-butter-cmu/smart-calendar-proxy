@@ -164,10 +164,10 @@ export function findTimeSlotInRange(
         }
     }
 ): TimeSlot[] {
-    let start = dayjs(params.startDate);
-    let end = dayjs(params.endDate);
+    const start = dayjs(params.startDate);
+    const end = dayjs(params.endDate);
     const timeSlots = [];
-    for (let date = dayjs(params.startDate); date.isBefore(end) || date.isSame(end, "day"); date = date.add(1, "day")) {
+    for (let date = start.clone(); date.isBefore(end) || date.isSame(end, "day"); date = date.add(1, "day")) {
         if (!params.idealDays.includes(date.day()))
             continue;
         const timeSlot = findFreeTimeSlots(
@@ -180,10 +180,23 @@ export function findTimeSlotInRange(
         if (!timeSlot)
             continue;
         timeSlots.push(timeSlot);
-        if (params.repeat?.count) {
-            start = start.add(1, params.repeat.type);
-            date = start;
-            end = end.add(1, params.repeat.type);
+        if (params.repeat?.count > 0) {
+            params.repeat.count--;
+            timeSlots.push(...findTimeSlotInRange({
+                startDate: start.add(1, params.repeat.type).toDate(),
+                endDate: end.add(1, params.repeat.type).toDate(),
+                dailyStartMin: params.dailyStartMin,
+                dailyEndMin: params.dailyEndMin,
+                duration: params.duration,
+                idealDays: params.idealDays,
+                busyEvents: params.busyEvents,
+                repeat: {
+                    type: params.repeat.type,
+                    count: params.repeat.count - 1
+                }
+            }));
+        } else {
+            break;
         }
     }
     if (timeSlots.length !== (params.repeat?.count || 0) + 1)

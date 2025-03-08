@@ -21,10 +21,18 @@ function authorizationReport(req: Request & { auth: JWTPayload; }, res: Response
 }
 
 function createAuthorizationValidator(secret: string) {
-    return expressjwt({
-        secret,
-        algorithms: ["HS256"]
-    });
+    return [
+        expressjwt({
+            secret,
+            algorithms: ["HS256"]
+        }),
+        (err: Error, _req: Request, res: Response, next: () => void) => {
+            if (err)
+                res.status(401).send({ message: err.message });
+            else
+                next();
+        }
+    ];
 }
 
 export { validationReport, authorizationReport, createAuthorizationValidator };

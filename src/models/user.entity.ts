@@ -85,6 +85,10 @@ export class User {
         return decrypted;
     }
 
+    get CMUEmail(): string {
+        return `${this.CMUUsername}@cmu.ac.th`;
+    }
+
     @OneToMany(() => Notification, (notification) => notification.owner, { cascade: true })
     public notifications: Relation<Notification[]>;
 }

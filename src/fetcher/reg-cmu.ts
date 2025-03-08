@@ -43,14 +43,13 @@ export class RegCMUFetcher {
     }
 
     public async validate(): Promise<boolean> {
-        try {
-            await this._oauth.login(this._cred);
-            return true;
-        } catch(e) {
-            if (process.env.DEBUG)
-                console.log(e.stack);
-            return false;
-        }
+        return new Promise((resolve) => {
+            this._oauth.login(this._cred).then(() => {
+                resolve(true);
+            }).catch(() => {
+                resolve(false);
+            });
+        });
     }
 
     public async getStudent(): Promise<StudentInfo> {
