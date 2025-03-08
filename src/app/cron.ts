@@ -24,12 +24,12 @@ export function initCronJobs(ds: DataSource) {
                     await noti.notifyByUsers(
                         [event.owner], 
                         NotificationType.EVENT_REMINDER, 
-                        { eventId: event.id }
+                        { eventId: event.id, eventTitle: event.title }
                     );
                     await noti.notifyFirebaseByUsers(
                         [event.owner], 
                         NotificationType.EVENT_REMINDER, 
-                        { eventId: event.id }
+                        { eventId: event.id, eventTitle: event.title }
                     )
                 })
             );

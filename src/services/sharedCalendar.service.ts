@@ -30,10 +30,16 @@ export class SharedCalendarService {
 
     public async getSharedEventsByOwner(
         ownerId: number, 
-        params: { 
+        params: {
             status?: SharedEventStatus, 
             limit: number, 
-            offset: number 
+            offset: number,
+            noPagination?: false // for fixing type issue
+        } | {
+            limit?: number, // for fixing type issue
+            offset?: number, // for fixing type issue
+            status?: SharedEventStatus,
+            noPagination: true
         }
     ): Promise<Pagination<SharedEvent>> {
         const user = await this._userService.getUserById(ownerId);
@@ -44,8 +50,8 @@ export class SharedCalendarService {
                 { status: condition, invites: { email: user.CMUEmail } },
             ],
             relations: ["invites", "members", "events", "events.owner", "owner"],
-            take: params.limit,
-            skip: params.offset,
+            take: params.noPagination ? undefined : params.limit,
+            skip: params.noPagination ? undefined : params.offset,
             order: { id: "DESC" }
         });
         return {
@@ -118,7 +124,7 @@ export class SharedCalendarService {
         await this._notificationService.notifyByEmails(
             event.invites,
             NotificationType.EVENT_CREATED,
-            { eventId: savedEvent.id }
+            { eventId: savedEvent.id, eventTitle: savedEvent.title }
         );
         return savedEvent;
     }
@@ -155,7 +161,7 @@ export class SharedCalendarService {
         await this._notificationService.notifyByEmails(
             event.members.map(member => member.CMUUsername),
             NotificationType.EVENT_DELETED,
-            { eventId: event.id }
+            { eventId: event.id, eventTitle: event.title }
         )
     }
 
@@ -253,9 +259,20 @@ export class SharedCalendarService {
         await this._notificationService.notifyByEmails(
             event.members.map(member => member.CMUEmail),
             NotificationType.MEETING_SCHEDULED,
-            { eventId: event.id }
+            { eventId: event.id, eventTitle: event.title }
         );
         return await this.getSharedEventByID(ownerId, eventId, { status: SharedEventStatus.SAVED, owned: true });
+    }
+
+    public async createMissingInvites(ownerId: number): Promise<void> {
+        const user = await this._userService.getUserById(ownerId);
+        const sharedEvents = await this.getSharedEventsByOwner(ownerId, { noPagination: true });
+        const invites = await this._invite.findBy(sharedEvents.items.map(sh => ({ event: { id: sh.id } })));
+        const missingInvites = sharedEvents.items.filter(sh => !invites.some(i => i.event.id === sh.id));
+        await this._invite.save(missingInvites.map(sh => this._invite.create({
+            event: { id: sh.id },
+            email: user.CMUEmail
+        })));
     }
 }
 

@@ -7,7 +7,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { User } from "../models/user.entity.js";
 import { SessionService } from "./session.service.js";
 
-export type Message = { eventId: number } | { email: string };
+export type Message = { eventId: number, eventTitle: string } | { email: string };
 
 export class NotificationService {
     private _notification: Repository<Notification>;
