@@ -18,6 +18,7 @@ export class Notification {
     data: {
         // For event
         eventId?: number;
+        eventTitle?: string;
 
         // For invites
         email?: string;

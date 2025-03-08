@@ -178,10 +178,10 @@ export type Notification = {
     read: boolean;
     createdAt: Date;
 } & (
-    | { type: NotificationType.EVENT_CREATED, data: { eventId: number } }
-    | { type: NotificationType.EVENT_SCHEDULED, data: { eventId: number } }
-    | { type: NotificationType.EVENT_DELETED, data: { eventId: number } }
-    | { type: NotificationType.EVENT_REMINDER, data: { eventId: number } }
+    | { type: NotificationType.EVENT_CREATED, data: { eventId: number, eventTitle: string } }
+    | { type: NotificationType.EVENT_SCHEDULED, data: { eventId: number, eventTitle: string } }
+    | { type: NotificationType.EVENT_DELETED, data: { eventId: number, eventTitle: string } }
+    | { type: NotificationType.EVENT_REMINDER, data: { eventId: number, eventTitle: string } }
     | { type: NotificationType.INVITE_ACCEPTED, data: { email: string } }
     | { type: NotificationType.INVITE_REJECTED, data: { email: string } }
 );

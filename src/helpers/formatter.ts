@@ -124,19 +124,19 @@ export function fUser(user: User): swagger.User {
 export function fNotificationData({ type, data }: Notification): { 
     type: swagger.NotificationType.EVENT_CREATED | swagger.NotificationType.EVENT_SCHEDULED | 
           swagger.NotificationType.EVENT_DELETED | swagger.NotificationType.EVENT_REMINDER,
-    data: { eventId: number }
+    data: { eventId: number, eventTitle: string }
  } | { 
     type: swagger.NotificationType.INVITE_ACCEPTED | swagger.NotificationType.INVITE_REJECTED, 
     data: { email: string } 
 } {
     if (type === NotificationType.EVENT_CREATED)
-        return { type: swagger.NotificationType.EVENT_CREATED, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_CREATED, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.MEETING_SCHEDULED)
-        return { type: swagger.NotificationType.EVENT_SCHEDULED, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_SCHEDULED, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.EVENT_DELETED)
-        return { type: swagger.NotificationType.EVENT_DELETED, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_DELETED, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.EVENT_REMINDER)
-        return { type: swagger.NotificationType.EVENT_REMINDER, data: { eventId: data.eventId } };
+        return { type: swagger.NotificationType.EVENT_REMINDER, data: { eventId: data.eventId, eventTitle: data.eventTitle } };
     else if (type === NotificationType.INVITE_ACCEPTED)
         return { type: swagger.NotificationType.INVITE_ACCEPTED, data: { email: data.email } };
     else if (type === NotificationType.INVITE_REJECTED)
