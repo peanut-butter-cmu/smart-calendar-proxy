@@ -1,7 +1,7 @@
 import { MangoClient } from "../client/mango.js";
 import { DataSource, EntityManager } from "typeorm";
 import { UserService } from "./user.service.js";
-import { CalendarError, CalendarService } from "./calendar.service.js";
+import { CalendarServiceError, CalendarService } from "./calendar.service.js";
 import { CourseInfo } from "../fetcher/reg-cmu.js";
 import { CalendarEventGroup } from "../models/calendarEventGroup.entity.js";
 import { CalendarEvent } from "../models/calendarEvent.entity.js";
@@ -113,8 +113,8 @@ export class SyncService {
         try {
             const classGroup = await this._calendarService.getGroupByCourseId(owner.id, fMangoCourseID(course.name));
             const assignmentGroup = await this._calendarService.getGroupByTitle(owner.id, GroupTitle.ASSIGNMENT);
-            return manager.save(
-                manager.create(CalendarEvent, assignments.map(({name, due_at}) => ({
+            return await manager.save(
+                manager.create(CalendarEvent, assignments.map(({ name, due_at }) => ({
                     title: name,
                     groups: [{ id: assignmentGroup.id }, { id: classGroup.id }],
                     start: new Date(due_at),
@@ -124,7 +124,7 @@ export class SyncService {
             );
         } catch(e) {
             // user not enrolled in the course 
-            if (e.message === CalendarError.COURSE_NOT_FOUND) {
+            if (e.message === CalendarServiceError.COURSE_NOT_FOUND) {
                 return [];
             }
             throw e;
@@ -162,11 +162,11 @@ export class SyncService {
             await this._generateMidtermExamEvent(m, userId, courses, courseGroups);
             await this._generateFinalExamEvent(m, userId, courses, courseGroups);
             await qr.commitTransaction();
+            await qr.release();
         } catch(e) {
             await qr.rollbackTransaction();
-            throw e;
-        } finally {
             await qr.release();
+            throw e;
         }
     }
 
@@ -192,11 +192,11 @@ export class SyncService {
             );
             await this._generateQuiz(man, user, []); // TODO: add quiz, but mango doesn't have quiz, talk more
             await qr.commitTransaction();
+            await qr.release();
         } catch(e) {
             await qr.rollbackTransaction();
-            throw e;
-        } finally {
             await qr.release();
+            throw e;
         }
     }
 
@@ -208,6 +208,7 @@ export class SyncService {
         await this._calendarService.createDefaultGroups(userId, courses);
         await this.syncUserClassAndExam(userId, courses);
         if (u.mangoToken) {
+            await this.syncCourse(userId);
             await this.syncUserAssignmentAndQuiz(userId);
         }
     }

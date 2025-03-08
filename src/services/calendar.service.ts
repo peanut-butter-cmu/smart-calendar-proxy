@@ -31,24 +31,24 @@ export class CalendarService {
     public async getGroupByCourseId(ownerId: number, courseId: string): Promise<CalendarEventGroup> {
         const course = await this._course.findOneBy({ code: courseId });
         if (!course)
-            throw new Error(CalendarError.COURSE_NOT_FOUND);
+            throw new Error(CalendarServiceError.COURSE_NOT_FOUND);
         const group = await this._group.findOneBy({ title: course.title, owner: { id: ownerId } });
         if (!group)
-            throw new Error(CalendarError.GROUP_NOT_FOUND);
+            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
         return group;
     }
 
     public async getGroupByTitle(ownerId: number, title: GroupTitle): Promise<CalendarEventGroup> {
         const group = await this._group.findOneBy({ title, owner: { id: ownerId } });
         if (!group)
-            throw new Error(CalendarError.GROUP_NOT_FOUND);
+            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
         return group;
     }
 
     public async getGroupByOwner(ownerId: number, groupId: number): Promise<CalendarEventGroup> {
         const group = await this._group.findOneBy({ id: groupId, owner: { id: ownerId } });
         if (!group)
-            throw new Error(CalendarError.GROUP_NOT_FOUND);
+            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
         return group;
     }
 
@@ -58,14 +58,14 @@ export class CalendarService {
             owner: { id: ownerId } 
         });
         if (!group)
-            throw new Error(CalendarError.GROUP_NOT_FOUND);
+            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
         return group;
     }
 
     public async editGroupByOwner(ownerId: number, groupId: number, updatedGroup: swagger.EventGroupEdit): Promise<CalendarEventGroup> {
         const result = await this._group.update({ id: groupId, owner: { id: ownerId } }, updatedGroup);
         if (result.affected === 0)
-            throw new Error(CalendarError.GROUP_NOT_FOUND);
+            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
         return this.getGroupByOwner(ownerId, groupId);
     }
 
@@ -114,7 +114,7 @@ export class CalendarService {
 
     public async addEvent(ownerId: number, event: swagger.CalendarEventNew, params: { type?: CalendarEventType } = {}): Promise<CalendarEvent> {
         if (event.start > event.end)
-            throw new Error(CalendarError.EVENT_END_BEFORE_START);
+            throw new Error(CalendarServiceError.EVENT_END_BEFORE_START);
         const ownerGroup = await this.getOwnerGroupByOwner(ownerId);
         const newEventUnsaved = this._event.create({
             ...event,
@@ -138,13 +138,13 @@ export class CalendarService {
             relations: ["groups"]
         });
         if (!event)
-            throw new Error(CalendarError.EVENT_NOT_FOUND);
+            throw new Error(CalendarServiceError.EVENT_NOT_FOUND);
         return event;
     }
 
     public async editEventByID(ownerId: number, eventId: number, newEvent: swagger.CalendarEventEdit): Promise<CalendarEvent> {
         if (newEvent.start > newEvent.end)
-            throw new Error(CalendarError.EVENT_END_BEFORE_START);
+            throw new Error(CalendarServiceError.EVENT_END_BEFORE_START);
         const originalEvent = await this._event.findOne({ 
             where: { 
                 id: eventId,
@@ -154,7 +154,7 @@ export class CalendarService {
             relations: ["groups"]
         });
         if (!originalEvent)
-            throw new Error(CalendarError.EVENT_NOT_FOUND);
+            throw new Error(CalendarServiceError.EVENT_NOT_FOUND);
         const modifiedEvent = await this._event.save({...originalEvent, ...newEvent});
         return modifiedEvent;
     }
@@ -222,7 +222,7 @@ export class CalendarService {
     }
 }
 
-export enum CalendarError {
+export enum CalendarServiceError {
     GROUP_NOT_FOUND = "Group not found.",
     EVENT_NOT_FOUND = "Event not found.",
     EVENT_END_BEFORE_START = "Event end before it start.",
