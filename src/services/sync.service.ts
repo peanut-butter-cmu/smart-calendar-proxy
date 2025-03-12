@@ -213,11 +213,11 @@ export class SyncService {
         const u = await this._userService.getUserById(userId, { credential: true });
         const reg = new RegCMUFetcher({ username: u.CMUUsername, password: u.CMUPassword });
         const courses = await reg.getCourses();
+        await this.syncCourses(userId, courses);
         await this._calendarService.createDefaultGroups(userId, courses);
         await this.syncCMUAndHolidayEvents(userId);
         await this.syncUserClassAndExam(userId, courses);
         if (u.mangoToken) {
-            await this.syncCourse(userId);
             await this.syncUserAssignmentAndQuiz(userId);
         }
     }
@@ -258,10 +258,18 @@ export class SyncService {
         await manager.save(user);
     }
 
+    /**
+     * @deprecated Use syncCourses with specify courses instead
+     * @param userId 
+     */
     public async syncCourse(userId: number): Promise<void> {
         const user = await this._userService.getUserById(userId, { credential: true });
         const reg = new RegCMUFetcher({ username: user.CMUUsername, password: user.CMUPassword });
         const courses = await reg.getCourses();
+        await this._updateUserCourses(this._ds.manager, userId, courses);
+    }
+
+    public async syncCourses(userId: number, courses: CourseInfo[]): Promise<void> {
         await this._updateUserCourses(this._ds.manager, userId, courses);
     }
 

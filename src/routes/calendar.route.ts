@@ -5,6 +5,7 @@ import { createAuthorizationValidator, validationReport } from "../helpers/route
 import { authorizationReport } from "../helpers/routes.js";
 import { CalendarController } from "../controllers/calendar.controller.js";
 import { eventEditSchema, eventNewSchema, groupEditSchema, paginationSchema, sharedNewSchema } from "./schema/calendar.schema.js";
+import rateLimit from "express-rate-limit";
 
 export function createCalendarRouter(dataSource: DataSource) {
     const router = Router();
@@ -86,6 +87,10 @@ export function createCalendarRouter(dataSource: DataSource) {
     router.post("/calendar/event/shared",
         authorizationValidate,
         authorizationReport,
+        rateLimit({
+            windowMs: 24 * 60 * 60 * 1000, // 1 day
+            max: 10
+        }),
         sharedNewSchema,
         validationReport,
         calendarController.addSharedEvent
