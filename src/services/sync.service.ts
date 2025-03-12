@@ -217,9 +217,9 @@ export class SyncService {
         await this._calendarService.createDefaultGroups(userId, courses);
         await this.syncCMUAndHolidayEvents(userId);
         await this.syncUserClassAndExam(userId, courses);
-        if (u.mangoToken) {
-            await this.syncUserAssignmentAndQuiz(userId);
-        }
+        // if (u.mangoToken) {
+        //     await this.syncUserAssignmentAndQuiz(userId);
+        // }
     }
 
     private async _updateUserCourses(
