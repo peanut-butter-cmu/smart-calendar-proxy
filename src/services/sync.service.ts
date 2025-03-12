@@ -15,10 +15,10 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { parseIcsCalendar } from "ts-ics";
 import { Course } from "../models/course.entity.js";
-import { fMangoCourseID } from "../helpers/formatter.js";
+import { fMangoCourseID as fMangoCourseName } from "../helpers/formatter.js";
 import { promptGlobalEvents } from "../helpers/prompt.js";
 import { OpenAI } from "openai";
-import { GlobalEvent } from "../models/globalEvent.entity.js";
+import { GlobalEvent, GlobalEventType } from "../models/globalEvent.entity.js";
 import { ICSEvent } from "../types/global.js";
 
 export class SyncService {
@@ -72,7 +72,7 @@ export class SyncService {
             )
             .filter(course => course.exam)
             .map(({title, exam}) => ({
-                title,
+                title: `${group}: ${title}`,
                 groups: [desiredGroup, groups.find(group => group.title === title && group.type === EventGroupType.COURSE)],
                 start: exam.start,
                 end: exam.end,
@@ -119,8 +119,9 @@ export class SyncService {
         assignments: MangoAssignment[]
     ): Promise<CalendarEvent[]> {
         try {
-            const classGroup = await this._calendarService.getGroupByCourseId(owner.id, fMangoCourseID(course.name));
+            const classGroup = await this._calendarService.getGroupByCourseId(owner.id, fMangoCourseName(course.name));
             const assignmentGroup = await this._calendarService.getGroupByTitle(owner.id, GroupTitle.ASSIGNMENT);
+            console.log(assignmentGroup.id, classGroup.id);
             return await manager.save(
                 manager.create(CalendarEvent, assignments.map(({ name, due_at }) => ({
                     title: name,
@@ -189,8 +190,10 @@ export class SyncService {
             await this._cleanEventsByTitle(man, userId, GroupTitle.ASSIGNMENT);
             await this._cleanEventsByTitle(man, userId, GroupTitle.QUIZ);
             const courses = await mango.getCourses();
+            const userCourses = await this._userService.getUserCourses(userId);
+            const filteredCourses = courses.filter(c => userCourses.find(uc => uc.code === fMangoCourseName(c.name)));
             const assignments = await Promise.all(
-                courses.map(async c => ({ 
+                filteredCourses.map(async c => ({ 
                     course: c,
                     assignments: await mango.getAssignments(c.id) 
                 }))
@@ -213,11 +216,11 @@ export class SyncService {
         const u = await this._userService.getUserById(userId, { credential: true });
         const reg = new RegCMUFetcher({ username: u.CMUUsername, password: u.CMUPassword });
         const courses = await reg.getCourses();
+        await this.syncCourses(userId, courses);
         await this._calendarService.createDefaultGroups(userId, courses);
-        await this.syncCMUEvents(userId);
+        await this.syncCMUAndHolidayEvents(userId);
         await this.syncUserClassAndExam(userId, courses);
         if (u.mangoToken) {
-            await this.syncCourse(userId);
             await this.syncUserAssignmentAndQuiz(userId);
         }
     }
@@ -258,6 +261,10 @@ export class SyncService {
         await manager.save(user);
     }
 
+    /**
+     * @deprecated Use syncCourses with specify courses instead
+     * @param userId 
+     */
     public async syncCourse(userId: number): Promise<void> {
         const user = await this._userService.getUserById(userId, { credential: true });
         const reg = new RegCMUFetcher({ username: user.CMUUsername, password: user.CMUPassword });
@@ -265,11 +272,15 @@ export class SyncService {
         await this._updateUserCourses(this._ds.manager, userId, courses);
     }
 
+    public async syncCourses(userId: number, courses: CourseInfo[]): Promise<void> {
+        await this._updateUserCourses(this._ds.manager, userId, courses);
+    }
+
     private async _generateCMUEvents(
         manager: EntityManager,
         userId: number
     ): Promise<void> {
-        const globalEvents = await this._globalEvent.find();
+        const globalEvents = await this._globalEvent.findBy({ type: GlobalEventType.CMU });
         const cmuGroup = await this._calendarService.getGroupByTitle(userId, GroupTitle.CMU);
         await manager.save(
             manager.create(CalendarEvent, globalEvents.map(e => ({
@@ -283,13 +294,33 @@ export class SyncService {
         );
     }
 
-    public async syncCMUEvents(userId: number): Promise<void> {
+    private async _generateHolidayEvents(
+        manager: EntityManager,
+        userId: number
+    ): Promise<void> {
+        const holidayEvents = await this._globalEvent.findBy({ type: GlobalEventType.HOLIDAY });
+        const holidayGroup = await this._calendarService.getGroupByTitle(userId, GroupTitle.HOLIDAY);
+        await manager.save(
+            manager.create(CalendarEvent, holidayEvents.map(e => ({
+                title: e.title,
+                start: new Date(e.start),
+                end: new Date(e.end),
+                groups: [{ id: holidayGroup.id }],
+                owner: { id: userId },
+                type: CalendarEventType.NON_SHARED
+            })))
+        );
+    }
+
+    public async syncCMUAndHolidayEvents(userId: number): Promise<void> {
         const qr = this._ds.createQueryRunner();
         await qr.connect();
         await qr.startTransaction();
         try {
             await this._cleanEventsByTitle(qr.manager, userId, GroupTitle.CMU);
+            await this._cleanEventsByTitle(qr.manager, userId, GroupTitle.HOLIDAY);
             await this._generateCMUEvents(qr.manager, userId);
+            await this._generateHolidayEvents(qr.manager, userId);
             await qr.commitTransaction();
             await qr.release();
         } catch(e) {
@@ -300,23 +331,64 @@ export class SyncService {
     }
 
     public async syncGlobalEvents(): Promise<void> {
-        const response = await axios.get(process.env.GLOBAL_EVENTS_URL!);
-        const calendar = parseIcsCalendar(response.data);
-        const prompt = promptGlobalEvents(calendar);
+        const cmuResponse = await axios.get(process.env.CMU_ICS_URL!);
+        const cmuCalendar = parseIcsCalendar(cmuResponse.data);
+        const cmuPrompt = promptGlobalEvents(cmuCalendar);
 
-        // send prompt to openai
+        const holidayResponse = await axios.get(process.env.HOLIDAY_ICS_URL!);
+        const holidayCalendar = parseIcsCalendar(holidayResponse.data);
+        const holidayPrompt = promptGlobalEvents(holidayCalendar);
+
         const openai = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY,
             baseURL: process.env.OPENAI_BASE_URL
         });
+
+        // send cmu calendar to openai
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: cmuPrompt }],
             response_format: { type: "json_object" }
         });
-        const result = JSON.parse(completion.choices[0].message.content!) as { events: ICSEvent[] };
-        console.log(result);
-        const events = await this._globalEvent.findBy(result.events.map(e => ({ uid: e.uid })));
-        await this._globalEvent.save(this._globalEvent.create(result.events.filter(e => !events.find(ev => ev.uid === e.uid))));
+        const cmuResult = JSON.parse(completion.choices[0].message.content!) as { events: ICSEvent[] };
+        console.log(cmuResult);
+        const cmuEvents = await this._globalEvent.findBy(cmuResult.events.map(e => ({ uid: e.uid })));
+        await this._globalEvent.save(
+            this._globalEvent.create(
+                cmuResult.events
+                .filter(e => !cmuEvents.find(ev => ev.uid === e.uid))
+                .map(e => ({
+                    uid: e.uid,
+                    title: e.title,
+                    start: e.start,
+                    end: e.end,
+                    type: GlobalEventType.CMU
+                }))
+            )
+        );
+
+
+        // send holiday calendar to openai
+        const holidayCompletion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: holidayPrompt }],
+            response_format: { type: "json_object" }
+        });
+        const holidayResult = JSON.parse(holidayCompletion.choices[0].message.content!) as { events: ICSEvent[] };
+        console.log(holidayResult);
+        const holidayEvents = await this._globalEvent.findBy(holidayResult.events.map(e => ({ uid: e.uid })));
+        await this._globalEvent.save(
+            this._globalEvent.create(
+                holidayResult.events
+                .filter(e => !holidayEvents.find(ev => ev.uid === e.uid))
+                .map(e => ({
+                    uid: e.uid, 
+                    title: e.title,
+                    start: e.start,
+                    end: e.end,
+                    type: GlobalEventType.HOLIDAY
+                }))
+            )
+        );
     }
 }

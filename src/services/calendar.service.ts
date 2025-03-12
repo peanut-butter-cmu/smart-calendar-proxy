@@ -23,7 +23,6 @@ export class CalendarService {
         this._course = ds.getRepository(Course);
     }
 
-    // Group related methods
     public async getGroupsByOwner(ownerId: number): Promise<CalendarEventGroup[]> {
         return this._group.findBy({ owner: { id: ownerId } });
     }
@@ -34,14 +33,14 @@ export class CalendarService {
             throw new Error(CalendarServiceError.COURSE_NOT_FOUND);
         const group = await this._group.findOneBy({ title: course.title, owner: { id: ownerId } });
         if (!group)
-            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
+            throw errGroupNotFound(course.title);
         return group;
     }
 
     public async getGroupByTitle(ownerId: number, title: GroupTitle): Promise<CalendarEventGroup> {
         const group = await this._group.findOneBy({ title, owner: { id: ownerId } });
         if (!group)
-            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
+            throw errGroupNotFound(title);
         return group;
     }
 
@@ -58,14 +57,14 @@ export class CalendarService {
             owner: { id: ownerId } 
         });
         if (!group)
-            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
+            throw errGroupNotFound(GroupTitle.OWNER);
         return group;
     }
 
     public async editGroupByOwner(ownerId: number, groupId: number, updatedGroup: swagger.EventGroupEdit): Promise<CalendarEventGroup> {
         const result = await this._group.update({ id: groupId, owner: { id: ownerId } }, updatedGroup);
         if (result.affected === 0)
-            throw new Error(CalendarServiceError.GROUP_NOT_FOUND);
+            throw errGroupNotFound(GroupTitle.OWNER);
         return this.getGroupByOwner(ownerId, groupId);
     }
 
@@ -76,6 +75,7 @@ export class CalendarService {
             { title: GroupTitle.MIDTERM },
             { title: GroupTitle.FINAL },
             { title: GroupTitle.CMU },
+            { title: GroupTitle.HOLIDAY },
         ];
         const courseGroups = courses.map(c => ({ title: c.title }));
         const user = await this._userService.getUserById(userId, { credential: true });
@@ -176,7 +176,7 @@ export class CalendarService {
             id: eventId,
             type: CalendarEventType.NON_SHARED,
             owner: { id: ownerId } 
-        })) || (await this.deleteUnsavedSharedEventByID(ownerId, eventId));
+        }));
         if (!event)
             throw new Error("Event not found.");
         await this._event.remove(event);
@@ -186,6 +186,10 @@ export class CalendarService {
         const [events, total] = await this._event.findAndCount({
             where: { 
                 owner: { id: ownerId },
+                type: Or(
+                    Equal(CalendarEventType.NON_SHARED),
+                    Equal(CalendarEventType.SAVED_SHARED)
+                ),
                 start: Between(params.startDate, params.endDate)
             },
             relations: ["groups"],
@@ -221,6 +225,10 @@ export class CalendarService {
         });
         await this._event.remove(events);
     }
+}
+
+function errGroupNotFound(title: string): Error {
+    return new Error(`Group ${title} not found.`);
 }
 
 export enum CalendarServiceError {

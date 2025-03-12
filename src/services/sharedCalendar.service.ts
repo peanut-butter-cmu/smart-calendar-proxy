@@ -76,7 +76,7 @@ export class SharedCalendarService {
         const event = await this._shared.findOne({
             where: [
                 { id: eventId, status: condition, owner: { id: ownerId } }, 
-                params.owned ? { id: eventId, status: condition, invites: { email: user.CMUEmail } } : undefined
+                params.owned ? undefined : { id: eventId, status: condition, invites: { email: user.CMUEmail } }
             ],
             relations: params.relations || ["invites", "members", "events", "events.owner", "owner"],
             order: { id: "DESC" }
@@ -129,18 +129,18 @@ export class SharedCalendarService {
         return savedEvent;
     }
 
-    private async _removeAllEvents(ownerId: number, eventId: number): Promise<void> {
+    private async _removeAllEvents(eventId: number): Promise<void> {
         const event = await this._shared.findOne({
-            where: { id: eventId, status: Not(SharedEventStatus.DELETED), owner: { id: ownerId } },
+            where: { id: eventId },
             relations: ["events"]
         });
         if (event.events)
             await this._event.remove(event.events);
     }
 
-    private async _removeAllInvites(ownerId: number, eventId: number): Promise<void> {
+    private async _removeAllInvites(eventId: number): Promise<void> {
         const invites = await this._invite.findBy({
-            event: { id: eventId, owner: { id: ownerId } }
+            event: { id: eventId }
         });
         await this._invite.remove(invites);
     }
@@ -152,14 +152,14 @@ export class SharedCalendarService {
         );
         if (!result.affected)
             throw new Error(SharedEventServiceError.SHARED_EVENT_NOT_FOUND);
-        await this._removeAllEvents(ownerId, id);
-        await this._removeAllInvites(ownerId, id);
+        await this._removeAllEvents(id);
+        await this._removeAllInvites(id);
         const event = await this._shared.findOne({
-            where: { id, status: Not(SharedEventStatus.DELETED), owner: { id: ownerId } },
-            relations: ["events"]
+            where: { id, status: SharedEventStatus.DELETED, owner: { id: ownerId } },
+            relations: ["members"]
         });
-        await this._notificationService.notifyByEmails(
-            event.members.map(member => member.CMUUsername),
+        await this._notificationService.notifyByIDs(
+            event.members.map(member => member.id),
             NotificationType.EVENT_DELETED,
             { eventId: event.id, eventTitle: event.title }
         )
@@ -243,6 +243,16 @@ export class SharedCalendarService {
     }
 
     public async saveSharedEventByID(ownerId: number, eventId: number): Promise<SharedEvent> {
+        /*
+        This method is used to save the shared event to the user's calendar.
+        Here is the flow:
+        1. Check if the event is arranged.
+           - If not, throw an error.
+        2. Update the event status to SAVED.
+        3. Update events in the event to SAVED_SHARED.
+        4. Notify the members about the event by in-app notification.
+        5. Return the saved event.
+        */
         const result = await this._shared.update(
             { id: eventId, status: SharedEventStatus.ARRANGED, owner: { id: ownerId } },
             { status: SharedEventStatus.SAVED }

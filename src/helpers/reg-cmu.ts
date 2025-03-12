@@ -231,12 +231,18 @@ export class CMUOAuth {
      * 3. login ด้วย password มันจะคืน redirect url พร้อม token
      * 4. ไปที่ redirect url นั้น เราก็จะได้ session id (cookie)
      */
+    /**
+     * Login with CMU Account
+     * @param username CMU Username with @cmu.ac.th
+     * @param password CMU Password
+     * @throws Error if username or password is invalid
+     */
     public async login({ username, password }: LoginInfo) {
         await this._initOAuth();
         await this._loginUser(username);
         const url = await this._loginPwd(username, password);
         if (!url)
-            throw new Error("unable to login");
+            throw new Error("Invalid username or password");
         await this._client.getOAuthState(url);
     }
 }

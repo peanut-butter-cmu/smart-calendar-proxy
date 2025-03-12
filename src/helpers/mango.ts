@@ -3,6 +3,6 @@ import { wrapper } from "axios-cookiejar-support";
 
 export function createMangoAxios() {
     return wrapper(axios.create({
-        timeout: 2000
+        timeout: 10000
     }));
 }
