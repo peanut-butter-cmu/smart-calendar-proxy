@@ -5,7 +5,7 @@ import { createAuthorizationValidator, validationReport } from "../helpers/route
 import { authorizationReport } from "../helpers/routes.js";
 import { CalendarController } from "../controllers/calendar.controller.js";
 import { eventEditSchema, eventNewSchema, groupEditSchema, paginationSchema, sharedNewSchema } from "./schema/calendar.schema.js";
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 
 export function createCalendarRouter(dataSource: DataSource) {
     const router = Router();

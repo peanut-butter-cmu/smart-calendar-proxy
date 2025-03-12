@@ -23,7 +23,6 @@ export class CalendarService {
         this._course = ds.getRepository(Course);
     }
 
-    // Group related methods
     public async getGroupsByOwner(ownerId: number): Promise<CalendarEventGroup[]> {
         return this._group.findBy({ owner: { id: ownerId } });
     }
@@ -177,7 +176,7 @@ export class CalendarService {
             id: eventId,
             type: CalendarEventType.NON_SHARED,
             owner: { id: ownerId } 
-        })) || (await this.deleteUnsavedSharedEventByID(ownerId, eventId));
+        }));
         if (!event)
             throw new Error("Event not found.");
         await this._event.remove(event);
@@ -187,6 +186,10 @@ export class CalendarService {
         const [events, total] = await this._event.findAndCount({
             where: { 
                 owner: { id: ownerId },
+                type: Or(
+                    Equal(CalendarEventType.NON_SHARED),
+                    Equal(CalendarEventType.SAVED_SHARED)
+                ),
                 start: Between(params.startDate, params.endDate)
             },
             relations: ["groups"],

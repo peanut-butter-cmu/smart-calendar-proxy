@@ -15,7 +15,7 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { parseIcsCalendar } from "ts-ics";
 import { Course } from "../models/course.entity.js";
-import { fMangoCourseID } from "../helpers/formatter.js";
+import { fMangoCourseID as fMangoCourseName } from "../helpers/formatter.js";
 import { promptGlobalEvents } from "../helpers/prompt.js";
 import { OpenAI } from "openai";
 import { GlobalEvent, GlobalEventType } from "../models/globalEvent.entity.js";
@@ -119,8 +119,9 @@ export class SyncService {
         assignments: MangoAssignment[]
     ): Promise<CalendarEvent[]> {
         try {
-            const classGroup = await this._calendarService.getGroupByCourseId(owner.id, fMangoCourseID(course.name));
+            const classGroup = await this._calendarService.getGroupByCourseId(owner.id, fMangoCourseName(course.name));
             const assignmentGroup = await this._calendarService.getGroupByTitle(owner.id, GroupTitle.ASSIGNMENT);
+            console.log(assignmentGroup.id, classGroup.id);
             return await manager.save(
                 manager.create(CalendarEvent, assignments.map(({ name, due_at }) => ({
                     title: name,
@@ -189,8 +190,10 @@ export class SyncService {
             await this._cleanEventsByTitle(man, userId, GroupTitle.ASSIGNMENT);
             await this._cleanEventsByTitle(man, userId, GroupTitle.QUIZ);
             const courses = await mango.getCourses();
+            const userCourses = await this._userService.getUserCourses(userId);
+            const filteredCourses = courses.filter(c => userCourses.find(uc => uc.code === fMangoCourseName(c.name)));
             const assignments = await Promise.all(
-                courses.map(async c => ({ 
+                filteredCourses.map(async c => ({ 
                     course: c,
                     assignments: await mango.getAssignments(c.id) 
                 }))
@@ -217,9 +220,9 @@ export class SyncService {
         await this._calendarService.createDefaultGroups(userId, courses);
         await this.syncCMUAndHolidayEvents(userId);
         await this.syncUserClassAndExam(userId, courses);
-        // if (u.mangoToken) {
-        //     await this.syncUserAssignmentAndQuiz(userId);
-        // }
+        if (u.mangoToken) {
+            await this.syncUserAssignmentAndQuiz(userId);
+        }
     }
 
     private async _updateUserCourses(

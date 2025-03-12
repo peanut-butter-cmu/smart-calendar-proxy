@@ -7,6 +7,7 @@ import { CalendarService } from "./calendar.service.js";
 import { SyncService } from "./sync.service.js";
 import { SharedCalendarService } from "./sharedCalendar.service.js";
 import { NotificationService } from "./notification.service.js";
+import { Course } from "../models/course.entity.js";
 export type LoginInfo = { username: string; password: string; };
 
 export enum LoginError {
@@ -166,6 +167,13 @@ export class UserService {
         await this._calendarService.deleteAllEvents(userId);
         await this._sharedCalendarService.deleteAllEvents(userId);
         await this._user.remove(user);
+    }
+
+    public async getUserCourses(userId: number): Promise<Course[]> {
+        return this._user.findOne({
+            where: { id: userId },
+            relations: ["courses"]
+        }).then(user => user?.courses);
     }
 }
 
